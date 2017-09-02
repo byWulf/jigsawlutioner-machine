@@ -4,13 +4,14 @@ const express = require('express');
 const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const { exec } = require('child_process');
 const rpio = require('rpio');
 const path = require("path");
 const sharp = require('sharp');
+const spawn = require('child_process').spawn;
+const fs = require('fs');
 
 const Jigsawlutioner = require('jigsawlutioner');
-const FileHelper = require('./src/fileHelper');
+const rp = require('request-promise');
 
 app.use(express.static('client'));
 app.use('/images', express.static('images'));
@@ -79,11 +80,65 @@ function setState(newState) {
     io.sockets.emit('machineState', state);
 }
 
+let cameraImageFilename = __dirname + '/images/camera.jpg';
+let settings = [
+    '-t', '0',
+    '-s',
+    '-ss', '25000',
+    '-ex', 'night',
+    '-th', 'none',
+    '-sh', '100',
+    '-co', '0',
+    '-br', '50',
+    '-sa', '50',
+    '-ISO', '0',
+    '-awb', 'fluorescent',
+    '-mm', 'backlit',
+    '-drc', 'high',
+    '-st',
+    '-q', '50',
+    '-n',
+    '-e', 'jpg',
+    '-o', '-'
+];
+let cameraProcess = spawn('raspistill', settings);
+let currentCameraResolver = null;
+function takeImage() {
+    return new Promise((resolve, reject) => {
+        currentCameraResolver = resolve;
+        console.log("Requesting image.. sending SIGUSR1");
+        cameraProcess.kill('SIGUSR1');
+    });
+}
+
+let currentImageBuffer = null;
+cameraProcess.stdout.on('data', (data) => {
+    if (currentImageBuffer === null) {
+        currentImageBuffer = data;
+    } else {
+        currentImageBuffer = Buffer.concat([currentImageBuffer, data]);
+    }
+
+    while ((eoi = currentImageBuffer.indexOf(Buffer.from([0xff, 0xd9]))) > -1) {
+        let imageBuffer = currentImageBuffer.slice(0, eoi + 2);
+        currentImageBuffer = currentImageBuffer.slice(eoi + 2);
+
+        currentCameraResolver(imageBuffer);
+    }
+});
+cameraProcess.stderr.on('data', (data) => {
+    console.log(data.toString());
+});
+cameraProcess.on('close', (data) => {
+    throw new Error('Camera closed.');
+});
+
 http.listen(port, () => {
     console.log('Server started on port ' + port);
 });
 
 let pieces = [];
+let index = 0;
 io.on('connection', (socket) => {
     console.log('user connected');
 
@@ -105,77 +160,65 @@ io.on('connection', (socket) => {
         }
     });
 
+    let conveyorReady = false;
+    let parsingReady = true;
+    function doNextImage() {
+        if (!conveyorReady || !parsingReady) return;
+
+        let currentIndex = index++;
+        let filename = __dirname + '/images/piece' + currentIndex + '.jpg';
+        takeImage().then((buffer) => {
+            console.log("Took picture (" + path.basename(filename) + "). Starting border recognition");
+            startConveyor();
+            conveyorReady = false;
+            return sharp(buffer).extract({left: 923, top: 997, width: 1066, height: 1168}).resize(913, 1000).toBuffer();
+        }).then((data) => {
+            sharp(data).toFile(filename);
+
+            return rp({
+                method: 'POST',
+                uri: 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/Jigsawlutioner',
+                headers: {
+                    'x-api-key': 'M6ATl0UUuL1MXc5E4ERYn5iwswNcxF7y8zOMR5Bg'
+                },
+                body: {
+                    imageData: data.toString('base64'),
+                    pieceIndex: currentIndex
+                },
+                json: true
+            });
+        }).then((piece) => {
+            if (typeof piece.errorMessage !== 'undefined') {
+                piece.valid = false;
+                io.sockets.emit('message', 'error', {atStep: 'Processing', message: piece.errorMessage});
+            } else {
+                piece.valid = true;
+                io.sockets.emit('message', 'success');
+            }
+
+            piece.pieceIndex = currentIndex;
+            piece.files = {
+                original: path.basename(filename)
+            };
+            pieces.push(piece);
+            io.sockets.emit('newPiece', {pieceIndex: piece.pieceIndex, filename: path.basename(filename)});
+
+            console.log("parsing finished");
+            parsingReady = true;
+            doNextImage();
+        }).catch((err) => {
+            console.log(err);
+            io.sockets.emit('message', 'error', {atStep: 'Processing', message: err.toString()});
+            parsingReady = true;
+            doNextImage();
+        });
+    }
+
     socket.on('startMachine', () => {
         if (!state) {
             stopAction = () => {
-                FileHelper.getFreeFilename('/var/www/images/incoming.jpg').then((filename) => {
-                    let settings = [
-                        '-ex off',
-                        '-sh -100',
-                        '-co 0',
-                        '-br 50',
-                        '-sa 50',
-                        '-ISO 0',
-                        '-awb fluorescent',
-                        '-mm backlit',
-                        '-drc high',
-                        '-st',
-                        '-q 50',
-                        '-n',
-                        '-t 1',
-                        '-e jpg',
-                        '-o ' + filename,
-                    ];
-
-                    console.log("Taking picture");
-                    exec('raspistill ' + settings.join(' '), (err, stdout, stderr) => {
-                        if (err || stderr) {
-                            io.sockets.emit('message', 'error', {atStep: 'TakingPicture', message: err.toString() + stderr});
-                            startConveyor();
-
-                            return;
-                        }
-
-                        let borderData = null;
-
-                        sharp(filename).extract({left: 923, top: 997, width: 1066, height: 1168}).resize(913, 1000).png().toFile(filename + '.preprocessed.png').then(() => {
-                            console.log("Took picture (" + path.basename(filename) + ".preprocessed.png). Starting border recognition");
-
-                            return Jigsawlutioner.BorderFinder.findPieceBorder(filename + '.preprocessed.png', {debug: true, threshold: 225});
-                        }).then((borderResult) => {
-                            borderData = borderResult;
-
-                            console.log("Border found, starting parsing");
-
-                            return Jigsawlutioner.SideFinder.findSides(pieces.length, borderData.path);
-
-                        }).then((piece) => {
-                            if (mode === 'compare') {
-
-                            } else {
-                                let data = {
-                                    pieceIndex: piece.pieceIndex,
-                                    sides: piece.sides,
-                                    diffs: piece.diffs,
-                                    boundingBox: borderData.boundingBox,
-                                    dimensions: borderData.dimensions,
-                                    files: borderData.files
-                                };
-                                pieces.push(data);
-
-                                io.sockets.emit('newPiece', {pieceIndex: data.pieceIndex, filename: data.files.original});
-                            }
-
-                            console.log("parsing finished");
-                            io.sockets.emit('message', 'success');
-
-                            startConveyor();
-                        }).catch((err) => {
-                            io.sockets.emit('message', 'error', {atStep: 'Processing', message: err.toString()});
-                            startConveyor();
-                        });
-                    });
-                });
+                conveyorReady = true;
+                doNextImage();
             };
             setState('running');
             startConveyor();
@@ -200,14 +243,14 @@ io.on('connection', (socket) => {
     socket.on('comparePieces', (sourcePieceIndex, comparePieceIndex) => {
         let sourcePiece = null;
         for (let i = 0; i < pieces.length; i++) {
-            if (pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
+            if (pieces[i].valid && pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
                 sourcePiece = pieces[i];
                 break;
             }
         }
         let comparePiece = null;
         for (let i = 0; i < pieces.length; i++) {
-            if (pieces[i].pieceIndex === parseInt(comparePieceIndex, 10)) {
+            if (pieces[i].valid && pieces[i].pieceIndex === parseInt(comparePieceIndex, 10)) {
                 comparePiece = pieces[i];
                 break;
             }
@@ -227,21 +270,33 @@ io.on('connection', (socket) => {
 
     socket.on('findMatchingPieces', (sourcePieceIndex) => {
         let sourcePiece = null;
+        let comparePieces = [];
         for (let i = 0; i < pieces.length; i++) {
-            if (pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
+            if (pieces[i].valid && pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
                 sourcePiece = pieces[i];
                 break;
             }
+            if (pieces[i].valid) {
+                comparePieces.push(pieces[i]);
+            }
         }
 
-        let matches = Jigsawlutioner.Matcher.findMatchingPieces(sourcePiece, pieces);
+        let matches = Jigsawlutioner.Matcher.findMatchingPieces(sourcePiece, comparePieces);
 
         socket.emit('matchingPieces', sourcePieceIndex, matches);
     });
 
     socket.on('getPlacements', () => {
         console.log("placements requested", Date.now());
-        let placements = Jigsawlutioner.Matcher.getPlacements(pieces);
+
+        let comparePieces = [];
+        for (let i = 0; i < pieces.length; i++) {
+            if (pieces[i].valid) {
+                comparePieces.push(pieces[i]);
+            }
+        }
+
+        let placements = Jigsawlutioner.Matcher.getPlacements(comparePieces);
         for (let groupIndex in placements) {
             if (!placements.hasOwnProperty(groupIndex)) continue;
 

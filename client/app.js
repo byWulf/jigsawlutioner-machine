@@ -14,7 +14,7 @@ const $compareContainer = $('#compareContainer');
 let pieces = [];
 
 function addPieceToList(pieceData) {
-    $listItem = $('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex + ' - ' + pieceData.filename).attr('data-pieceindex', pieceData.pieceIndex);
+    $listItem = $('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex + ' - ' + pieceData.filename).attr('data-pieceindex', pieceData.pieceIndex).prepend('<i class="fa fa-' + (pieceData.valid ? 'check' : 'times') + '"></i>');
     $listItem.append('<div class="pull-right matches"></div>');
     $pieceList.append( $listItem);
     $compareList.append($('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex).attr('data-pieceindex', pieceData.pieceIndex));

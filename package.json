@@ -26,6 +26,8 @@
     "tether": "^1.4.0",
     "paper-jsdom": "^0.11.4",
     "sharp": "^0.18.2",
-    "jigsawlutioner": "git+ssh://git@github.com:byWulf/jigsawlutioner.git"
+    "jigsawlutioner": "git+ssh://git@github.com:byWulf/jigsawlutioner.git",
+    "request": "^2.81.0",
+    "request-promise": "^4.2.1"
   }
 }
