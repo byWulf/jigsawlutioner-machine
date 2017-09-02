@@ -4,7 +4,6 @@ const express = require('express');
 const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const Siofu = require('socketio-file-upload');
 const { exec } = require('child_process');
 const rpio = require('rpio');
 const path = require("path");
