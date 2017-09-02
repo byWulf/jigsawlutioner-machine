@@ -146,6 +146,7 @@ io.on('connection', (socket) => {
     for (let i = 0; i < pieces.length; i++) {
         pieceIndices.push({
             pieceIndex: pieces[i].pieceIndex,
+            valid: pieces[i].valid,
             filename: pieces[i].files.original
         });
     }
@@ -201,7 +202,7 @@ io.on('connection', (socket) => {
                 original: path.basename(filename)
             };
             pieces.push(piece);
-            io.sockets.emit('newPiece', {pieceIndex: piece.pieceIndex, filename: path.basename(filename)});
+            io.sockets.emit('newPiece', {pieceIndex: piece.pieceIndex, valid: piece.valid, filename: path.basename(filename)});
 
             console.log("parsing finished");
             parsingReady = true;

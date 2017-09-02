@@ -11,8 +11,6 @@ const $cornerGraphsCanvas = $('.cornerGraphsCanvas');
 const $sideComparisonCanvas = $('.sideComparisonCanvas');
 const $compareContainer = $('#compareContainer');
 
-let pieces = [];
-
 function addPieceToList(pieceData) {
     $listItem = $('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex + ' - ' + pieceData.filename).attr('data-pieceindex', pieceData.pieceIndex).prepend('<i class="fa fa-' + (pieceData.valid ? 'check' : 'times') + '"></i>');
     $listItem.append('<div class="pull-right matches"></div>');
@@ -85,6 +83,10 @@ socket.on('machineState', (state) => {
 });
 
 socket.on('pieces', (pieceDate) => {
+    $pieceList.empty();
+    $mainContent.find('> .loading').hide();
+    $mainContent.find('> .card').hide();
+
     for (let i = 0; i < pieceDate.length; i++) {
         addPieceToList(pieceDate[i]);
     }
@@ -103,6 +105,7 @@ socket.on('piece', (piece) => {
     loadingPiece = null;
     currentPiece = piece;
 
+    //$mainContent.find('#rightColumn').toggle(piece.valid);
     $mainContent.find('#pieceCard').find('.card-title').text('Piece #' + piece.pieceIndex + ' - ' + piece.files.original);
     $mainContent.find('.imagesNav').empty();
     for (let fileType in piece.files) {
@@ -122,123 +125,137 @@ socket.on('piece', (piece) => {
 
     setTimeout(function() {
         //Image borders
-        paper.setup($imageCanvas[0]);
-        let points = [];
-        for (let i = 0; i < piece.diffs.length; i++) {
-            points.push({
-                x: piece.diffs[i].point[1] + piece.boundingBox.left,
-                y: piece.diffs[i].point[2] + piece.boundingBox.top
-            });
-        }
-
-        new paper.Path({
-            strokeColor: 'red',
-            strokeWidth: 4,
-            closed: true,
-            segments: points
-        });
-
-        for (let i = 0; i < piece.sides.length; i++) {
-            [piece.sides[i].startPoint, piece.sides[i].endPoint].forEach(function (point) {
-                new paper.Path({
-                    strokeColor: '#00ff00',
-                    strokeWidth: 4,
-                    closed: false,
-                    segments: [{
-                        x: point[1] - 20 + piece.boundingBox.left,
-                        y: point[2] - 20 + piece.boundingBox.top
-                    }, {x: point[1] + 20 + piece.boundingBox.left, y: point[2] + 20 + piece.boundingBox.top}]
-                });
-                new paper.Path({
-                    strokeColor: '#00ff00',
-                    strokeWidth: 4,
-                    closed: false,
-                    segments: [{
-                        x: point[1] - 20 + piece.boundingBox.left,
-                        y: point[2] + 20 + piece.boundingBox.top
-                    }, {x: point[1] + 20 + piece.boundingBox.left, y: point[2] - 20 + piece.boundingBox.top}]
-                });
-            });
-
-            new paper.PointText({
-                point: {
-                    x: (piece.sides[i].endPoint[1] - piece.sides[i].startPoint[1]) / 2 + piece.sides[i].startPoint[1] + piece.boundingBox.left - 15,
-                    y: (piece.sides[i].endPoint[2] - piece.sides[i].startPoint[2]) / 2 + piece.sides[i].startPoint[2] + piece.boundingBox.top + 40
-                },
-                content: i,
-                fillColor: 'white',
-                strokeColor: 'black',
-                strokeWidth: 5,
-                fontWeight: 'bold',
-                fontSize: 80
-            });
-        }
-
-        paper.view.scale(400 / piece.dimensions.width, {x: 0, y: 0});
-        paper.view.draw();
-
-        //Corner detection
-        paper.setup($cornerGraphsCanvas[0]);
-
-        let degreePoints = [];
-        let diffPoints = [];
-        for (let i = 0; i < piece.diffs.length; i++) {
-            degreePoints.push({x: i, y: piece.diffs[i].deg + 300});
-            diffPoints.push({x: i, y: piece.diffs[i].diff * 2 + 300});
-        }
-
-        for (let i = 0; i < piece.sides.length; i++) {
-            new paper.Path({
-                strokeColor: '#00ff00',
-                closed: false,
-                segments: [{x: piece.sides[i].fromOffset, y: 0}, {x: piece.sides[i].fromOffset, y: 600}]
-            });
-            new paper.Path({
-                strokeColor: '#00ff00',
-                closed: false,
-                segments: [{x: piece.sides[i].toOffset, y: 0}, {x: piece.sides[i].toOffset, y: 600}]
-            });
-        }
-
-        new paper.Path({
-            strokeColor: '#dddddd',
-            closed: false,
-            segments: [{x: 0, y: 300}, {x: piece.diffs.length, y: 300}]
-        });
-        for (let i = 0; i < piece.diffs.length; i += 100) {
-            new paper.Path({
-                strokeColor: '#bbbbbb',
-                closed: false,
-                segments: [{x: i, y: 150}, {x: i, y: 450}]
-            });
-            if (i % 1000 === 0) {
-                new paper.Path({
-                    strokeColor: '#999999',
-                    closed: false,
-                    segments: [{x: i, y: 100}, {x: i, y: 500}]
+        if (piece.valid) {
+            console.log("ja");
+            paper.setup($imageCanvas[0]);
+            let points = [];
+            for (let i = 0; i < piece.diffs.length; i++) {
+                points.push({
+                    x: piece.diffs[i].point[1] + piece.boundingBox.left,
+                    y: piece.diffs[i].point[2] + piece.boundingBox.top
                 });
             }
+
+            new paper.Path({
+                strokeColor: 'red',
+                strokeWidth: 4,
+                closed: true,
+                segments: points
+            });
+
+            for (let i = 0; i < piece.sides.length; i++) {
+                [piece.sides[i].startPoint, piece.sides[i].endPoint].forEach(function (point) {
+                    new paper.Path({
+                        strokeColor: '#00ff00',
+                        strokeWidth: 4,
+                        closed: false,
+                        segments: [{
+                            x: point[1] - 20 + piece.boundingBox.left,
+                            y: point[2] - 20 + piece.boundingBox.top
+                        }, {x: point[1] + 20 + piece.boundingBox.left, y: point[2] + 20 + piece.boundingBox.top}]
+                    });
+                    new paper.Path({
+                        strokeColor: '#00ff00',
+                        strokeWidth: 4,
+                        closed: false,
+                        segments: [{
+                            x: point[1] - 20 + piece.boundingBox.left,
+                            y: point[2] + 20 + piece.boundingBox.top
+                        }, {x: point[1] + 20 + piece.boundingBox.left, y: point[2] - 20 + piece.boundingBox.top}]
+                    });
+                });
+
+                new paper.PointText({
+                    point: {
+                        x: (piece.sides[i].endPoint[1] - piece.sides[i].startPoint[1]) / 2 + piece.sides[i].startPoint[1] + piece.boundingBox.left - 15,
+                        y: (piece.sides[i].endPoint[2] - piece.sides[i].startPoint[2]) / 2 + piece.sides[i].startPoint[2] + piece.boundingBox.top + 40
+                    },
+                    content: i,
+                    fillColor: 'white',
+                    strokeColor: 'black',
+                    strokeWidth: 5,
+                    fontWeight: 'bold',
+                    fontSize: 80
+                });
+            }
+
+            paper.view.scale(400 / piece.dimensions.width, {x: 0, y: 0});
+            paper.view.draw();
+
+            //Corner detection
+            paper.setup($cornerGraphsCanvas[0]);
+
+            let degreePoints = [];
+            let diffPoints = [];
+            for (let i = 0; i < piece.diffs.length; i++) {
+                degreePoints.push({x: i, y: piece.diffs[i].deg + 300});
+                diffPoints.push({x: i, y: piece.diffs[i].diff * 2 + 300});
+            }
+
+            for (let i = 0; i < piece.sides.length; i++) {
+                new paper.Path({
+                    strokeColor: '#00ff00',
+                    closed: false,
+                    segments: [{x: piece.sides[i].fromOffset, y: 0}, {x: piece.sides[i].fromOffset, y: 600}]
+                });
+                new paper.Path({
+                    strokeColor: '#00ff00',
+                    closed: false,
+                    segments: [{x: piece.sides[i].toOffset, y: 0}, {x: piece.sides[i].toOffset, y: 600}]
+                });
+            }
+
+            new paper.Path({
+                strokeColor: '#dddddd',
+                closed: false,
+                segments: [{x: 0, y: 300}, {x: piece.diffs.length, y: 300}]
+            });
+            for (let i = 0; i < piece.diffs.length; i += 100) {
+                new paper.Path({
+                    strokeColor: '#bbbbbb',
+                    closed: false,
+                    segments: [{x: i, y: 150}, {x: i, y: 450}]
+                });
+                if (i % 1000 === 0) {
+                    new paper.Path({
+                        strokeColor: '#999999',
+                        closed: false,
+                        segments: [{x: i, y: 100}, {x: i, y: 500}]
+                    });
+                }
+            }
+
+
+            new paper.Path({
+                strokeColor: 'blue',
+                closed: false,
+                segments: degreePoints
+            });
+            new paper.Path({
+                strokeColor: 'red',
+                closed: false,
+                segments: diffPoints
+            });
+
+            paper.view.onResize = function() {
+                paper.view.scale(1 / paper.view.scaling.x, 1, {x: 0, y: 0});
+                paper.view.scale($cornerGraphsCanvas.width() / piece.diffs.length, 1, {x: 0, y: 0});
+            };
+
+            paper.view.onResize();
+            paper.view.draw();
+        } else {
+            paper.setup($imageCanvas[0]);
+            new paper.Path({
+                strokeColor: 'red',
+                strokeWidth: 4,
+                closed: true,
+                segments: []
+            });
+            paper.setup($cornerGraphsCanvas[0]);
+
+            paper.view.draw();
         }
-
-
-        new paper.Path({
-            strokeColor: 'blue',
-            closed: false,
-            segments: degreePoints
-        });
-        new paper.Path({
-            strokeColor: 'red',
-            closed: false,
-            segments: diffPoints
-        });
-
-        paper.view.onResize = function() {
-            paper.view.scale(1 / paper.view.scaling.x, 1, {x: 0, y: 0});
-            paper.view.scale($cornerGraphsCanvas.width() / piece.diffs.length, 1, {x: 0, y: 0});
-        };
-
-        paper.view.onResize();
-        paper.view.draw();
     }, 10);
 });
 
