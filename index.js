@@ -15,7 +15,6 @@ const FileHelper = require('./src/fileHelper');
 app.use(express.static('client'));
 app.use('/images', express.static('images'));
 
-app.use(Siofu.router);
 app.use('/jquery', express.static('node_modules/jquery/dist'));
 app.use('/bootstrap', express.static('node_modules/bootstrap/dist'));
 app.use('/fontawesome', express.static('node_modules/font-awesome'));
