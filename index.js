@@ -10,9 +10,7 @@ const rpio = require('rpio');
 const path = require("path");
 const sharp = require('sharp');
 
-const Jigsawlutioner = require('./src/jigsawlutioner');
-const Debug = require('./src/debug');
-const BorderFinder = require('./src/borderFinder');
+const Jigsawlutioner = require('jigsawlutioner');
 const FileHelper = require('./src/fileHelper');
 
 app.use(express.static('client'));
@@ -132,7 +130,6 @@ io.on('connection', (socket) => {
                     ];
 
                     console.log("Taking picture");
-                    Debug.startTime('1_takingpicture');
                     exec('raspistill ' + settings.join(' '), (err, stdout, stderr) => {
                         if (err || stderr) {
                             io.sockets.emit('message', 'error', {atStep: 'TakingPicture', message: err.toString() + stderr});
@@ -145,22 +142,16 @@ io.on('connection', (socket) => {
 
                         sharp(filename).extract({left: 923, top: 997, width: 1066, height: 1168}).resize(913, 1000).png().toFile(filename + '.preprocessed.png').then(() => {
                             console.log("Took picture (" + path.basename(filename) + ".preprocessed.png). Starting border recognition");
-                            Debug.endTime('1_takingpicture');
-                            Debug.startTime('2_preprocessing');
 
-                            return BorderFinder.findPieceBorder(filename + '.preprocessed.png', {debug: true, threshold: 225});
+                            return Jigsawlutioner.BorderFinder.findPieceBorder(filename + '.preprocessed.png', {debug: true, threshold: 225});
                         }).then((borderResult) => {
                             borderData = borderResult;
 
-                            Debug.endTime('2_preprocessing');
-                            Debug.startTime('3_parsing');
                             console.log("Border found, starting parsing");
 
-                            return Jigsawlutioner.analyzeBorders(borderData.path);
+                            return Jigsawlutioner.SideFinder.findSides(borderData.path);
 
                         }).then((piece) => {
-                            Debug.endTime('3_parsing');
-
                             if (mode === 'compare') {
 
                             } else {
@@ -180,7 +171,6 @@ io.on('connection', (socket) => {
                             console.log("parsing finished");
                             io.sockets.emit('message', 'success');
 
-                            Debug.output();
                             startConveyor();
                         }).catch((err) => {
                             io.sockets.emit('message', 'error', {atStep: 'Processing', message: err.toString()});
@@ -229,7 +219,7 @@ io.on('connection', (socket) => {
         if (sourcePiece && comparePiece) {
             for (let sourceSideIndex = 0; sourceSideIndex < sourcePiece.sides.length; sourceSideIndex++) {
                 for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
-                    results[sourceSideIndex + '_' + compareSideIndex] = Jigsawlutioner.getSideMatchingFactor(sourcePiece.sides[sourceSideIndex], comparePiece.sides[compareSideIndex], 0, 0);
+                    results[sourceSideIndex + '_' + compareSideIndex] = Jigsawlutioner.Matcher.getSideMatchingFactor(sourcePiece.sides[sourceSideIndex], comparePiece.sides[compareSideIndex], 0, 0);
                 }
             }
         }
@@ -246,14 +236,14 @@ io.on('connection', (socket) => {
             }
         }
 
-        let matches = Jigsawlutioner.findMatchingPieces(sourcePiece, pieces);
+        let matches = Jigsawlutioner.Matcher.findMatchingPieces(sourcePiece, pieces);
 
         socket.emit('matchingPieces', sourcePieceIndex, matches);
     });
 
     socket.on('getPlacements', () => {
         console.log("placements requested", Date.now());
-        let placements = Jigsawlutioner.getPlacements(pieces);
+        let placements = Jigsawlutioner.Matcher.getPlacements(pieces);
         for (let groupIndex in placements) {
             if (!placements.hasOwnProperty(groupIndex)) continue;
 
