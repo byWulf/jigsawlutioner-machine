@@ -149,7 +149,7 @@ io.on('connection', (socket) => {
 
                             console.log("Border found, starting parsing");
 
-                            return Jigsawlutioner.SideFinder.findSides(borderData.path);
+                            return Jigsawlutioner.SideFinder.findSides(pieces.length, borderData.path);
 
                         }).then((piece) => {
                             if (mode === 'compare') {
