@@ -15,7 +15,9 @@ function addPieceToList(pieceData) {
     $listItem = $('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex + ' - ' + pieceData.filename).attr('data-pieceindex', pieceData.pieceIndex).prepend('<i class="fa fa-' + (pieceData.valid ? 'check' : 'times') + '"></i>');
     $listItem.append('<div class="pull-right matches"></div>');
     $pieceList.append( $listItem);
-    $compareList.append($('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex).attr('data-pieceindex', pieceData.pieceIndex));
+    if (pieceData.valid) {
+        $compareList.append($('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex).attr('data-pieceindex', pieceData.pieceIndex));
+    }
 }
 
 let loadingPiece = null;
@@ -84,6 +86,7 @@ socket.on('machineState', (state) => {
 
 socket.on('pieces', (pieceDate) => {
     $pieceList.empty();
+    $compareList.empty();
     $mainContent.find('> .loading').hide();
     $mainContent.find('> .card').hide();
 

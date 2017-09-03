@@ -203,6 +203,7 @@ io.on('connection', (socket) => {
                         }
                     }
                     piecePlacements = placements;
+                    console.log("placements", placements);
                     compareReady = true;
                 });
             }
@@ -230,7 +231,8 @@ io.on('connection', (socket) => {
                 },
                 body: {
                     imageData: data.toString('base64'),
-                    pieceIndex: currentIndex
+                    pieceIndex: currentIndex,
+                    reduction: 0
                 },
                 json: true
             });
