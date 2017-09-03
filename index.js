@@ -232,12 +232,19 @@ io.on('connection', (socket) => {
                 body: {
                     imageData: data.toString('base64'),
                     pieceIndex: currentIndex,
-                    reduction: 0
+                    reduction: 2
                 },
                 json: true
             });
         }).then((piece) => {
             if (typeof piece.errorMessage !== 'undefined') {
+                if (piece.errorMessage === 'No areas found') {
+                    parsingReady = true;
+                    doNextImage();
+
+                    return;
+                }
+
                 piece.valid = false;
                 io.sockets.emit('message', 'error', {atStep: 'Processing', message: piece.errorMessage});
             } else {
