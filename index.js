@@ -8,9 +8,6 @@ const rpio = require('rpio');
 const path = require("path");
 const sharp = require('sharp');
 const spawn = require('child_process').spawn;
-const fs = require('fs');
-
-const Jigsawlutioner = require('jigsawlutioner');
 const rp = require('request-promise');
 
 app.use(express.static('client'));
@@ -20,11 +17,7 @@ app.use('/jquery', express.static('node_modules/jquery/dist'));
 app.use('/bootstrap', express.static('node_modules/bootstrap/dist'));
 app.use('/fontawesome', express.static('node_modules/font-awesome'));
 app.use('/tether', express.static('node_modules/tether/dist'));
-app.use('/paper', express.static('node_modules/paper/dist'));
 app.use('/popper', express.static('node_modules/popper.js/dist/umd'));
-app.use('/animate.css', express.static('node_modules/animate.css'));
-app.use('/bootstrap-notify', express.static('node_modules/bootstrap-notify'));
-
 
 rpio.init({
     mapping: 'gpio'
@@ -81,8 +74,7 @@ function setState(newState) {
     io.sockets.emit('machineState', state);
 }
 
-let cameraImageFilename = __dirname + '/images/camera.jpg';
-let settings = [
+let cameraProcess = spawn('raspistill', [
     '-t', '0',
     '-s',
     '-ss', '25000',
@@ -101,11 +93,10 @@ let settings = [
     '-n',
     '-e', 'jpg',
     '-o', '-'
-];
-let cameraProcess = spawn('raspistill', settings);
+]);
 let currentCameraResolver = null;
 function takeImage() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         currentCameraResolver = resolve;
         console.log("Requesting image.. sending SIGUSR1");
         cameraProcess.kill('SIGUSR1');
@@ -120,6 +111,7 @@ cameraProcess.stdout.on('data', (data) => {
         currentImageBuffer = Buffer.concat([currentImageBuffer, data]);
     }
 
+    let eoi;
     while ((eoi = currentImageBuffer.indexOf(Buffer.from([0xff, 0xd9]))) > -1) {
         let imageBuffer = currentImageBuffer.slice(0, eoi + 2);
         currentImageBuffer = currentImageBuffer.slice(eoi + 2);
@@ -130,7 +122,7 @@ cameraProcess.stdout.on('data', (data) => {
 cameraProcess.stderr.on('data', (data) => {
     console.log(data.toString());
 });
-cameraProcess.on('close', (data) => {
+cameraProcess.on('close', () => {
     throw new Error('Camera closed.');
 });
 
@@ -155,17 +147,20 @@ function getValidPieces() {
     return comparePieces;
 }
 
+function callApi(resource, postData) {
+    return rp({
+        method: 'POST',
+        uri: 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/jigsawlutioner/' + resource,
+        headers: {
+            'x-api-key': 'M6ATl0UUuL1MXc5E4ERYn5iwswNcxF7y8zOMR5Bg'
+        },
+        body: postData,
+        json: true
+    });
+}
+
 io.on('connection', (socket) => {
     console.log('user connected');
-
-    let pieceIndices = [];
-    for (let i = 0; i < pieces.length; i++) {
-        pieceIndices.push({
-            pieceIndex: pieces[i].pieceIndex,
-            valid: pieces[i].valid,
-            filename: pieces[i].files.original
-        });
-    }
 
     let conveyorReady = false;
     let parsingReady = true;
@@ -174,9 +169,10 @@ io.on('connection', (socket) => {
 
     socket.emit('mode', mode);
     socket.emit('machineState', state);
-    socket.emit('pieces', pieceIndices);
     if (currentWaitIn) {
         socket.emit('waitIn', currentWaitIn.task, currentWaitIn.placements ? piecePlacements[currentWaitIn.placements.groupIndex] : null);
+    } else {
+        socket.emit('waitIn', null);
     }
 
     socket.on('mode', (newMode) => {
@@ -187,17 +183,7 @@ io.on('connection', (socket) => {
             if (mode === 'compare') {
                 compareReady = false;
 
-                rp({
-                    method: 'POST',
-                    uri: 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/jigsawlutioner/getplacements',
-                    headers: {
-                        'x-api-key': 'M6ATl0UUuL1MXc5E4ERYn5iwswNcxF7y8zOMR5Bg'
-                    },
-                    body: {
-                        pieces: getValidPieces()
-                    },
-                    json: true
-                }).then((placements) => {
+                callApi('getplacements', {pieces: getValidPieces()}).then((placements) => {
                     for (let groupIndex in placements) {
                         if (!placements.hasOwnProperty(groupIndex)) continue;
 
@@ -271,18 +257,10 @@ io.on('connection', (socket) => {
         }).then((data) => {
             sharp(data).toFile(filename);
 
-            return rp({
-                method: 'POST',
-                uri: 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/jigsawlutioner/parseimage',
-                headers: {
-                    'x-api-key': 'M6ATl0UUuL1MXc5E4ERYn5iwswNcxF7y8zOMR5Bg'
-                },
-                body: {
-                    imageData: data.toString('base64'),
-                    pieceIndex: currentIndex,
-                    reduction: 2
-                },
-                json: true
+            return callApi('parseimage', {
+                imageData: data.toString('base64'),
+                pieceIndex: currentIndex,
+                reduction: 2
             });
         }).then((piece) => {
             if (typeof piece.errorMessage !== 'undefined') {
@@ -299,10 +277,8 @@ io.on('connection', (socket) => {
                 });
 
                 piece.valid = false;
-                io.sockets.emit('message', 'error', {atStep: 'Processing', message: piece.errorMessage});
             } else {
                 piece.valid = true;
-                io.sockets.emit('message', 'success');
             }
 
             if (mode === 'scan') {
@@ -313,57 +289,58 @@ io.on('connection', (socket) => {
                 pieces.push(piece);
                 io.sockets.emit('newPiece', {pieceIndex: piece.pieceIndex, valid: piece.valid, filename: path.basename(filename)});
             } else if (mode === 'compare' && compareReady && piece.valid) {
-                let foundPieceIndex = Jigsawlutioner.Matcher.findExistingPieceIndex(getValidPieces(), piece);
-
-                if (foundPieceIndex === null) {
-                    waitIns.push({
-                        count: 2,
-                        task: 'Couldn\'t match this piece with an existing piece. Please rescan it.'
-                    });
-                } else {
-                    let found = false;
-                    outerPlacementLoop: for (let groupIndex in piecePlacements) {
-                        if (!piecePlacements.hasOwnProperty(groupIndex)) continue;
-
-                        for (let x in piecePlacements[groupIndex]) {
-                            if (!piecePlacements[groupIndex].hasOwnProperty(x)) continue;
-
-                            for (let y in piecePlacements[groupIndex][x]) {
-                                if (!piecePlacements[groupIndex][x].hasOwnProperty(y)) continue;
-
-                                if (piecePlacements[groupIndex][x][y].pieceIndex !== foundPieceIndex) continue;
-
-                                found = true;
-                                waitIns.push({
-                                    count: 2,
-                                    task: 'Put this piece to group ' + (parseInt(groupIndex, 10) + 1) + ' on position ' + x + '/' + y,
-                                    placements: {
-                                        groupIndex: groupIndex,
-                                        x: x,
-                                        y: y
-                                    }
-                                });
-
-                                break outerPlacementLoop;
-                            }
-                        }
-                    }
-
-                    if (!found) {
+                callApi('findexistingpieceindex', {
+                    pieces: getValidPieces(),
+                    piece: piece
+                }).then((foundPieceIndex) => {
+                    if (foundPieceIndex === null) {
                         waitIns.push({
                             count: 2,
-                            task: 'Something unexpected happened.. couldn\'t find the matching piece in the placement list :('
+                            task: 'Couldn\'t match this piece with an existing piece. Please rescan it.'
                         });
+                    } else {
+                        let found = false;
+                        outerPlacementLoop: for (let groupIndex in piecePlacements) {
+                            if (!piecePlacements.hasOwnProperty(groupIndex)) continue;
+
+                            for (let x in piecePlacements[groupIndex]) {
+                                if (!piecePlacements[groupIndex].hasOwnProperty(x)) continue;
+
+                                for (let y in piecePlacements[groupIndex][x]) {
+                                    if (!piecePlacements[groupIndex][x].hasOwnProperty(y)) continue;
+
+                                    if (piecePlacements[groupIndex][x][y].pieceIndex !== foundPieceIndex) continue;
+
+                                    found = true;
+                                    waitIns.push({
+                                        count: 2,
+                                        task: 'Put this piece to group ' + (parseInt(groupIndex, 10) + 1) + ' on position ' + x + '/' + y,
+                                        placements: {
+                                            groupIndex: groupIndex,
+                                            x: x,
+                                            y: y
+                                        }
+                                    });
+
+                                    break outerPlacementLoop;
+                                }
+                            }
+                        }
+
+                        if (!found) {
+                            waitIns.push({
+                                count: 2,
+                                task: 'Something unexpected happened.. couldn\'t find the matching piece in the placement list :('
+                            });
+                        }
                     }
-                }
+                });
             }
 
-            console.log("parsing finished");
             parsingReady = true;
             doNextImage();
         }).catch((err) => {
             console.log(err);
-            io.sockets.emit('message', 'error', {atStep: 'Processing', message: err.toString()});
 
             waitIns.push({
                 count: 2,
@@ -391,56 +368,5 @@ io.on('connection', (socket) => {
         if (state) {
             setState(null);
         }
-    });
-
-    socket.on('getPiece', (pieceIndex) => {
-        console.log("piece " + pieceIndex + " requested");
-        for (let i = 0; i < pieces.length; i++) {
-            if (pieces[i].pieceIndex === parseInt(pieceIndex, 10)) {
-                socket.emit('piece', pieces[i]);
-            }
-        }
-    });
-
-    socket.on('comparePieces', (sourcePieceIndex, comparePieceIndex) => {
-        let sourcePiece = null;
-        for (let i = 0; i < pieces.length; i++) {
-            if (pieces[i].valid && pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
-                sourcePiece = pieces[i];
-                break;
-            }
-        }
-        let comparePiece = null;
-        for (let i = 0; i < pieces.length; i++) {
-            if (pieces[i].valid && pieces[i].pieceIndex === parseInt(comparePieceIndex, 10)) {
-                comparePiece = pieces[i];
-                break;
-            }
-        }
-
-        let results = {};
-        if (sourcePiece && comparePiece) {
-            for (let sourceSideIndex = 0; sourceSideIndex < sourcePiece.sides.length; sourceSideIndex++) {
-                for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
-                    results[sourceSideIndex + '_' + compareSideIndex] = Jigsawlutioner.Matcher.getSideMatchingFactor(sourcePiece.sides[sourceSideIndex], comparePiece.sides[compareSideIndex], 0, 0);
-                }
-            }
-        }
-
-        socket.emit('comparison', sourcePiece, comparePiece, results);
-    });
-
-    socket.on('findMatchingPieces', (sourcePieceIndex) => {
-        let sourcePiece = null;
-        for (let i = 0; i < pieces.length; i++) {
-            if (pieces[i].valid && pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
-                sourcePiece = pieces[i];
-                break;
-            }
-        }
-
-        let matches = Jigsawlutioner.Matcher.findMatchingPieces(sourcePiece, getValidPieces());
-
-        socket.emit('matchingPieces', sourcePieceIndex, matches);
     });
 });
