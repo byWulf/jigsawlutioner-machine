@@ -45,6 +45,7 @@ let mode = 'scan';
 let lastStart = Date.now();
 let conveyorRunning = false;
 let stopAction = null;
+let waitIns = [];
 function startConveyor() {
     if (!state) return;
 
@@ -140,6 +141,20 @@ http.listen(port, () => {
 let pieces = [];
 let piecePlacements = null;
 let index = 0;
+
+function getValidPieces() {
+    let comparePieces = [];
+    for (let i = 0; i < pieces.length; i++) {
+        if (pieces[i].valid) {
+            comparePieces.push({
+                pieceIndex: pieces[i].pieceIndex,
+                sides: pieces[i].sides
+            });
+        }
+    }
+    return comparePieces;
+}
+
 io.on('connection', (socket) => {
     console.log('user connected');
 
@@ -155,10 +170,14 @@ io.on('connection', (socket) => {
     let conveyorReady = false;
     let parsingReady = true;
     let compareReady = false;
+    let currentWaitIn = null;
 
     socket.emit('mode', mode);
     socket.emit('machineState', state);
     socket.emit('pieces', pieceIndices);
+    if (currentWaitIn) {
+        socket.emit('waitIn', currentWaitIn.task, currentWaitIn.placements ? piecePlacements[currentWaitIn.placements.groupIndex] : null);
+    }
 
     socket.on('mode', (newMode) => {
         if (['scan', 'compare'].indexOf(newMode) > -1 && newMode !== mode) {
@@ -168,16 +187,6 @@ io.on('connection', (socket) => {
             if (mode === 'compare') {
                 compareReady = false;
 
-                let comparePieces = [];
-                for (let i = 0; i < pieces.length; i++) {
-                    if (pieces[i].valid) {
-                        comparePieces.push({
-                            pieceIndex: pieces[i].pieceIndex,
-                            sides: pieces[i].sides
-                        });
-                    }
-                }
-
                 rp({
                     method: 'POST',
                     uri: 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/jigsawlutioner/getplacements',
@@ -185,7 +194,7 @@ io.on('connection', (socket) => {
                         'x-api-key': 'M6ATl0UUuL1MXc5E4ERYn5iwswNcxF7y8zOMR5Bg'
                     },
                     body: {
-                        pieces: comparePieces
+                        pieces: getValidPieces()
                     },
                     json: true
                 }).then((placements) => {
@@ -198,7 +207,11 @@ io.on('connection', (socket) => {
                             for (let y in placements[groupIndex][x]) {
                                 if (!placements[groupIndex][x].hasOwnProperty(y)) continue;
 
-                                placements[groupIndex][x][y] = placements[groupIndex][x][y].pieceIndex;
+                                placements[groupIndex][x][y] = {
+                                    pieceIndex: placements[groupIndex][x][y].pieceIndex,
+                                    current: false,
+                                    found: false
+                                };
                             }
                         }
                     }
@@ -210,8 +223,43 @@ io.on('connection', (socket) => {
         }
     });
 
+    function hideWaitIn() {
+        currentWaitIn = null;
+        io.sockets.emit('waitIn', null);
+    }
+
     function doNextImage() {
         if (!conveyorReady || !parsingReady) return;
+
+        for (let i = waitIns.length - 1; i >= 0; i--) {
+            waitIns[i].count--;
+            if (waitIns[i].count === 0) {
+                if (waitIns[i].placements) {
+                    for (let groupIndex in piecePlacements) {
+                        if (!piecePlacements.hasOwnProperty(groupIndex)) continue;
+
+                        for (let x in piecePlacements[groupIndex]) {
+                            if (!piecePlacements[groupIndex].hasOwnProperty(x)) continue;
+
+                            for (let y in piecePlacements[groupIndex][x]) {
+                                if (!piecePlacements[groupIndex][x].hasOwnProperty(y)) continue;
+
+                                if (piecePlacements[groupIndex][x][y].current) {
+                                    piecePlacements[groupIndex][x][y].current = false;
+                                }
+                            }
+                        }
+                    }
+
+                    piecePlacements[waitIns[i].placements.groupIndex][waitIns[i].placements.x][waitIns[i].placements.y].current = true;
+                    piecePlacements[waitIns[i].placements.groupIndex][waitIns[i].placements.x][waitIns[i].placements.y].found = true;
+                }
+                io.sockets.emit('waitIn', waitIns[i].task, waitIns[i].placements ? piecePlacements[waitIns[i].placements.groupIndex] : null);
+                currentWaitIn = waitIns[i];
+                waitIns.splice(i,1);
+                setState(null);
+            }
+        }
 
         let currentIndex = index++;
         let filename = __dirname + '/images/piece' + currentIndex + '.jpg';
@@ -245,6 +293,11 @@ io.on('connection', (socket) => {
                     return;
                 }
 
+                waitIns.push({
+                    count: 2,
+                    task: piece.errorMessage + ' Please rescan piece.'
+                });
+
                 piece.valid = false;
                 io.sockets.emit('message', 'error', {atStep: 'Processing', message: piece.errorMessage});
             } else {
@@ -259,8 +312,50 @@ io.on('connection', (socket) => {
                 };
                 pieces.push(piece);
                 io.sockets.emit('newPiece', {pieceIndex: piece.pieceIndex, valid: piece.valid, filename: path.basename(filename)});
-            } else if (mode === 'compare' && compareReady) {
-                console.log('TODO: Have to check for match with existing tile and then look at the placement where it belongs');
+            } else if (mode === 'compare' && compareReady && piece.valid) {
+                let foundPieceIndex = Jigsawlutioner.Matcher.findExistingPieceIndex(getValidPieces(), piece);
+
+                if (foundPieceIndex === null) {
+                    waitIns.push({
+                        count: 2,
+                        task: 'Couldn\'t match this piece with an existing piece. Please rescan it.'
+                    });
+                } else {
+                    let found = false;
+                    outerPlacementLoop: for (let groupIndex in piecePlacements) {
+                        if (!piecePlacements.hasOwnProperty(groupIndex)) continue;
+
+                        for (let x in piecePlacements[groupIndex]) {
+                            if (!piecePlacements[groupIndex].hasOwnProperty(x)) continue;
+
+                            for (let y in piecePlacements[groupIndex][x]) {
+                                if (!piecePlacements[groupIndex][x].hasOwnProperty(y)) continue;
+
+                                if (piecePlacements[groupIndex][x][y].pieceIndex !== foundPieceIndex) continue;
+
+                                found = true;
+                                waitIns.push({
+                                    count: 2,
+                                    task: 'Put this piece to group ' + (parseInt(groupIndex, 10) + 1) + ' on position ' + x + '/' + y,
+                                    placements: {
+                                        groupIndex: groupIndex,
+                                        x: x,
+                                        y: y
+                                    }
+                                });
+
+                                break outerPlacementLoop;
+                            }
+                        }
+                    }
+
+                    if (!found) {
+                        waitIns.push({
+                            count: 2,
+                            task: 'Something unexpected happened.. couldn\'t find the matching piece in the placement list :('
+                        });
+                    }
+                }
             }
 
             console.log("parsing finished");
@@ -269,6 +364,12 @@ io.on('connection', (socket) => {
         }).catch((err) => {
             console.log(err);
             io.sockets.emit('message', 'error', {atStep: 'Processing', message: err.toString()});
+
+            waitIns.push({
+                count: 2,
+                task: err.toString() + ' Please rescan piece.'
+            });
+
             parsingReady = true;
             doNextImage();
         });
@@ -281,6 +382,7 @@ io.on('connection', (socket) => {
                 doNextImage();
             };
             setState('running');
+            hideWaitIn();
             startConveyor();
         }
     });
@@ -330,18 +432,14 @@ io.on('connection', (socket) => {
 
     socket.on('findMatchingPieces', (sourcePieceIndex) => {
         let sourcePiece = null;
-        let comparePieces = [];
         for (let i = 0; i < pieces.length; i++) {
             if (pieces[i].valid && pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
                 sourcePiece = pieces[i];
                 break;
             }
-            if (pieces[i].valid) {
-                comparePieces.push(pieces[i]);
-            }
         }
 
-        let matches = Jigsawlutioner.Matcher.findMatchingPieces(sourcePiece, comparePieces);
+        let matches = Jigsawlutioner.Matcher.findMatchingPieces(sourcePiece, getValidPieces());
 
         socket.emit('matchingPieces', sourcePieceIndex, matches);
     });

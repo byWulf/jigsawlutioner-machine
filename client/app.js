@@ -10,6 +10,7 @@ const $imageCanvas = $('.imageCanvas');
 const $cornerGraphsCanvas = $('.cornerGraphsCanvas');
 const $sideComparisonCanvas = $('.sideComparisonCanvas');
 const $compareContainer = $('#compareContainer');
+const $waitInModal = $('#waitInModal');
 
 function addPieceToList(pieceData) {
     $listItem = $('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex + ' - ' + pieceData.filename).attr('data-pieceindex', pieceData.pieceIndex).prepend('<i class="fa fa-' + (pieceData.valid ? 'check' : 'times') + '"></i>');
@@ -89,6 +90,7 @@ socket.on('pieces', (pieceDate) => {
     $compareList.empty();
     $mainContent.find('> .loading').hide();
     $mainContent.find('> .card').hide();
+    $waitInModal.modal('hide');
 
     for (let i = 0; i < pieceDate.length; i++) {
         addPieceToList(pieceDate[i]);
@@ -281,6 +283,8 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
             for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
                 let result = results[sourceSideIndex + '_' + compareSideIndex];
 
+                let isStraight = currentPiece.sides[sourceSideIndex].direction === 'straight' || comparePiece.sides[compareSideIndex].direction === 'straight';
+
                 let points = [];
                 for (let j = 0; j < currentPiece.sides[sourceSideIndex].points.length; j++) {
                     points.push({
@@ -289,7 +293,7 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                     });
                 }
                 new paper.Path({
-                    strokeColor: result.sameSide ? '#888888' : (result.matches ? '#00bb00' : '#ff0000'),
+                    strokeColor: result.sameSide || isStraight ? '#888888' : (result.matches ? '#00bb00' : '#ff0000'),
                     closed: false,
                     segments: points
                 });
@@ -302,7 +306,7 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                     });
                 }
                 new paper.Path({
-                    strokeColor: result.sameSide ? '#cccccc' : (result.matches ? '#66bbaa' : '#ffaa00'),
+                    strokeColor: result.sameSide || isStraight ? '#cccccc' : (result.matches ? '#66bbaa' : '#ffaa00'),
                     closed: false,
                     segments: comparePoints
                 });
@@ -318,7 +322,7 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                     fontSize: 40
                 });
 
-                if (currentPiece.sides[sourceSideIndex].direction === 'straight' || comparePiece.sides[compareSideIndex].direction === 'straight') {
+                if (isStraight) {
                     new paper.PointText({
                         point: {
                             x: 500 * sourceSideIndex + 250 - 150,
@@ -465,6 +469,36 @@ $('#placementsButton').on('click', () => {
     socket.emit('getPlacements');
 });
 
-socket.on('placements', (placements) => {
-    console.log(placements);
+socket.on('waitIn', (task, placements) => {
+    if (!task) {
+        $waitInModal.modal('hide');
+        return;
+    }
+
+    $waitInModal.find('.modal-body').text(task);
+
+    if (placements) {
+        let $board = $('<div class="placementBoard"></div>');
+        for (let x in placements) {
+            if (!placements.hasOwnProperty(x)) continue;
+
+            for (let y in placements[x]) {
+                if (!placements[x].hasOwnProperty(y)) continue;
+
+                $('<div class="piece ' + (placements[x][y].current ? 'current' : '') + ' ' + (placements[x][y].found ? 'found' : '') + '"></div>').css({
+                    left: parseInt(x, 10) * 50,
+                    top: parseInt(y, 10) * 50
+                }).appendTo($board)
+            }
+        }
+
+        $board.appendTo($waitInModal.find('.modal-body'));
+    }
+
+    $waitInModal.modal('show');
+});
+
+$waitInModal.find('.btn-primary').on('click', () => {
+    $waitInModal.modal('hide');
+    socket.emit('startMachine');
 });
