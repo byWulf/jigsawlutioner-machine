@@ -102,6 +102,8 @@ socket.on('piece', (piece) => {
     if (piece.pieceIndex !== parseInt(loadingPiece, 10)) {
         return;
     }
+    console.log('Piece: ', piece);
+
     loadingPiece = null;
     currentPiece = piece;
 
