@@ -479,6 +479,8 @@ socket.on('waitIn', (task, placements) => {
 
     if (placements) {
         let $board = $('<div class="placementBoard"></div>');
+        let highestY = 0;
+        let lowestY = 0;
         for (let x in placements) {
             if (!placements.hasOwnProperty(x)) continue;
 
@@ -488,9 +490,15 @@ socket.on('waitIn', (task, placements) => {
                 $('<div class="piece ' + (placements[x][y].current ? 'current' : '') + ' ' + (placements[x][y].found ? 'found' : '') + '"></div>').css({
                     left: parseInt(x, 10) * 50,
                     top: parseInt(y, 10) * 50
-                }).appendTo($board)
+                }).appendTo($board);
+                highestY = Math.max(highestY, parseInt(y, 10));
+                lowestY = Math.min(lowestY, parseInt(y, 10));
             }
         }
+        $board.css({
+            marginTop: -lowestY * 50 + 'px',
+            height: (highestY + 1) * 50 + 'px'
+        });
 
         $board.appendTo($waitInModal.find('.modal-body'));
     }
