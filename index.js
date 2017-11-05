@@ -1,23 +1,30 @@
-const port = process.env.PORT || 1100;
+const io = require('./src/frontend');
 
-const express = require('express');
-const app = express();
-const http = require('http').Server(app);
-const io = require('socket.io')(http);
 const rpio = require('rpio');
 const path = require("path");
 const sharp = require('sharp');
-const spawn = require('child_process').spawn;
-const rp = require('request-promise');
 
-app.use(express.static('client'));
-app.use('/images', express.static('images'));
 
-app.use('/jquery', express.static('node_modules/jquery/dist'));
-app.use('/bootstrap', express.static('node_modules/bootstrap/dist'));
-app.use('/fontawesome', express.static('node_modules/font-awesome'));
-app.use('/tether', express.static('node_modules/tether/dist'));
-app.use('/popper', express.static('node_modules/popper.js/dist/umd'));
+let settings = {
+    ss: '21000',
+    ex: 'night',
+    sh: '100',
+    co: '0',
+    br: '50',
+    sa: '50',
+    ISO: '0',
+    awb: 'fluorescent',
+    mm: 'backlit',
+    drc: 'high',
+    q: '50',
+    cropLeft: '33',
+    cropRight: '74',
+    cropTop: '23',
+    cropBottom: '83',
+    parseThresh: '245',
+    parseReduction: '2'
+};
+
 
 rpio.init({
     mapping: 'gpio'
@@ -74,61 +81,8 @@ function setState(newState) {
     io.sockets.emit('machineState', state);
 }
 
-let cameraProcess = spawn('raspistill', [
-    '-t', '0',
-    '-s',
-    '-ss', '25000',
-    '-ex', 'night',
-    '-th', 'none',
-    '-sh', '100',
-    '-co', '0',
-    '-br', '50',
-    '-sa', '50',
-    '-ISO', '0',
-    '-awb', 'fluorescent',
-    '-mm', 'backlit',
-    '-drc', 'high',
-    '-st',
-    '-q', '50',
-    '-n',
-    '-e', 'jpg',
-    '-o', '-'
-]);
-let currentCameraResolver = null;
-function takeImage() {
-    return new Promise((resolve) => {
-        currentCameraResolver = resolve;
-        console.log("Requesting image.. sending SIGUSR1");
-        cameraProcess.kill('SIGUSR1');
-    });
-}
+const camera = require('./src/camera');
 
-let currentImageBuffer = null;
-cameraProcess.stdout.on('data', (data) => {
-    if (currentImageBuffer === null) {
-        currentImageBuffer = data;
-    } else {
-        currentImageBuffer = Buffer.concat([currentImageBuffer, data]);
-    }
-
-    let eoi;
-    while ((eoi = currentImageBuffer.indexOf(Buffer.from([0xff, 0xd9]))) > -1) {
-        let imageBuffer = currentImageBuffer.slice(0, eoi + 2);
-        currentImageBuffer = currentImageBuffer.slice(eoi + 2);
-
-        currentCameraResolver(imageBuffer);
-    }
-});
-cameraProcess.stderr.on('data', (data) => {
-    console.log(data.toString());
-});
-cameraProcess.on('close', () => {
-    throw new Error('Camera closed.');
-});
-
-http.listen(port, () => {
-    console.log('Server started on port ' + port);
-});
 
 let pieces = [];
 let piecePlacements = null;
@@ -147,17 +101,7 @@ function getValidPieces() {
     return comparePieces;
 }
 
-function callApi(resource, postData) {
-    return rp({
-        method: 'POST',
-        uri: 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/jigsawlutioner/' + resource,
-        headers: {
-            'x-api-key': 'M6ATl0UUuL1MXc5E4ERYn5iwswNcxF7y8zOMR5Bg'
-        },
-        body: postData,
-        json: true
-    });
-}
+const api = require('./src/api');
 
 io.on('connection', (socket) => {
     console.log('user connected');
@@ -183,7 +127,7 @@ io.on('connection', (socket) => {
             if (mode === 'compare') {
                 compareReady = false;
 
-                callApi('getplacements', {pieces: getValidPieces()}).then((placements) => {
+                api.call('getplacements', {pieces: getValidPieces()}).then((placements) => {
                     for (let groupIndex in placements) {
                         if (!placements.hasOwnProperty(groupIndex)) continue;
 
@@ -247,17 +191,24 @@ io.on('connection', (socket) => {
             }
         }
 
+
         let currentIndex = index++;
         let filename = __dirname + '/images/piece' + currentIndex + '.jpg';
-        takeImage().then((buffer) => {
+        camera.takeImage().then((buffer) => {
             console.log("Took picture (" + path.basename(filename) + "). Starting border recognition");
             startConveyor();
             conveyorReady = false;
-            return sharp(buffer).extract({left: 923, top: 997, width: 1066, height: 1168}).resize(913, 1000).toBuffer();
+
+            let left = Math.floor(settings.cropLeft / 100 * 3280);
+            let top = Math.floor(settings.cropTop / 100 * 2464);
+            let width = Math.floor((settings.cropRight - settings.cropLeft) / 100 * 3280);
+            let height = Math.floor((settings.cropBottom - settings.cropTop) / 100 * 2464);
+
+            return sharp(buffer).extract({left: 33/100*3280, top: 997, width: 1066, height: 1168}).resize(913, 1000).toBuffer();
         }).then((data) => {
             sharp(data).toFile(filename);
 
-            return callApi('parseimage', {
+            return api.call('parseimage', {
                 imageData: data.toString('base64'),
                 pieceIndex: currentIndex,
                 reduction: 2
@@ -289,7 +240,7 @@ io.on('connection', (socket) => {
                 pieces.push(piece);
                 io.sockets.emit('newPiece', {pieceIndex: piece.pieceIndex, valid: piece.valid, filename: path.basename(filename)});
             } else if (mode === 'compare' && compareReady && piece.valid) {
-                callApi('findexistingpieceindex', {
+                api.call('findexistingpieceindex', {
                     pieces: getValidPieces(),
                     piece: piece
                 }).then((foundPieceIndex) => {

@@ -28,6 +28,8 @@
     "sharp": "^0.18.2",
     "jigsawlutioner": "git+ssh://git@github.com:byWulf/jigsawlutioner.git",
     "request": "^2.81.0",
-    "request-promise": "^4.2.1"
+    "request-promise": "^4.2.1",
+    "brickpi3": "^0.9.3",
+    "keypress": "^0.2.1"
   }
 }
