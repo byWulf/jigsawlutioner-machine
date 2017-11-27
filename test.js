@@ -1,14 +1,14 @@
-const Conveyor = require('./src/conveyor');
-const brickPi = require('./src/brickpi');
+const brickPi = require('./src/brickpiMaster');
+const colors = require('colors');
 
-const conveyor = new Conveyor(11, brickPi.nextPlate);
 
-conveyor.addStation(3, require('./src/stations/photobox'));
-//conveyor.addStation(5, require('./src/stations/rotator'));
-//conveyor.addStation(8, require('./src/stations/arm'));
 
-conveyor.start();
+const logger = require('./src/logger').getInstance('Foo', colors.green);
 
-setTimeout(() => {
-    conveyor.stop();
-}, 30000);
+(async () => {
+    logger.debug('Start');
+    await brickPi.resetMotors();
+    logger.info('Motors resetted');
+    await brickPi.rotatePiece(90);
+    logger.warning('Rotated');
+})();

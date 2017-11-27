@@ -1,19 +1,30 @@
 const Plate = require('./plate');
 const Station = require('./stations/station');
 
+const logger = require('./logger').getInstance('Conveyor'.magenta);
+
 function Conveyor(plateCount, forwardFunction) {
     this.forwardFunction = forwardFunction;
     this.running = false;
 
     this.start = async () => {
-        if (this.running) return;
+        logger.debug('Starting');
+        if (this.running) {
+            logger.debug('- already running. Nothing to do');
+            return;
+        }
 
         this.running = true;
+        logger.debug('Started. Entering loop.');
         while(this.running) {
+            logger.debug('awaiting move');
             await this._move();
+            logger.debug('moved');
+            logger.debug('waiuting for all stations ready');
             this._unreadyStations();
             this._executeStations();
             await this._waitForAllStationsReady();
+            logger.debug('all stations ready');
         }
     };
 
@@ -41,8 +52,11 @@ function Conveyor(plateCount, forwardFunction) {
     };
 
     this._move = async () =>{
+        logger.debug('mode: typeof forwardFunction', typeof this.forwardFunction);
         if (typeof this.forwardFunction === 'function') {
+            logger.debug('mode: starting forwardFunction');
             await this.forwardFunction();
+            logger.debug('mode: forwardFunction finished');
         }
 
         for (let i = this.plates.length - 1; i > 0; i--) {
@@ -62,6 +76,7 @@ function Conveyor(plateCount, forwardFunction) {
     this._executeStations = () => {
         for (let i = 0; i < this.stations.length; i++) {
             if (this._isStation(i)) {
+                // noinspection JSIgnoredPromiseFromCall
                 this.stations[i].execute(this.plates[i]);
             }
         }
@@ -86,7 +101,7 @@ function Conveyor(plateCount, forwardFunction) {
                     clearInterval(interval);
                     resolve();
                 }
-            }, 10);
+            }, 100);
         });
     };
 

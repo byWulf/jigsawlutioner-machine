@@ -9,7 +9,7 @@ function Plate() {
                     clearInterval(interval);
                     resolve(this.data);
                 }
-            }, 10);
+            }, 100);
         });
     };
 

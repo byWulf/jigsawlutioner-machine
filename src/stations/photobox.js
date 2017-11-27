@@ -4,6 +4,9 @@ const sharp = require('sharp');
 const api = require('../api');
 const mode = require('../mode');
 const path = require("path");
+const colors = require('colors');
+const logger = require('../logger').getInstance('Station'.cyan + ' Photobox'.yellow);
+const fs = require('fs');
 
 class Photobox extends Station {
     constructor() {
@@ -22,6 +25,8 @@ class Photobox extends Station {
         this.pieces = [];
         this.isCompareReady = false;
         this.isCompareRunning = false;
+        this.piecesLoaded = false;
+        this.pieceDir = __dirname + '/../../pieces/';
     }
 
     getValidPieces() {
@@ -61,11 +66,24 @@ class Photobox extends Station {
                         clearInterval(interval);
                         resolve();
                     }
-                }, 10);
+                }, 100);
             } else {
                 this.isCompareRunning = true;
 
-                this.piecePlacements = await api.call('getplacements', {pieces: getValidPieces()});
+                this.piecePlacements = await api.call('getplacements', {pieces: this.getValidPieces()});
+                for (let group in this.piecePlacements) {
+                    if (!this.piecePlacements.hasOwnProperty(group)) continue;
+
+                    for (let x in this.piecePlacements[group]) {
+                        if (!this.piecePlacements[group].hasOwnProperty(x)) continue;
+
+                        for (let y in this.piecePlacements[group][x]) {
+                            if (!this.piecePlacements[group][x].hasOwnProperty(y)) continue;
+
+                            logger.debug(group, x, y, this.piecePlacements[group][x][y]);
+                        }
+                    }
+                }
 
                 this.isCompareReady = true;
                 resolve();
@@ -86,9 +104,10 @@ class Photobox extends Station {
                     if (this.piecePlacements[groupIndex][x][y].pieceIndex !== pieceIndex) continue;
 
                     return {
-                        groupIndex: groupIndex,
-                        x: x,
-                        y: y
+                        groupIndex: parseInt(groupIndex, 10),
+                        x: parseInt(x, 10),
+                        y: parseInt(y, 10),
+                        rotation: this.piecePlacements[groupIndex][x][y].rotation
                     };
                 }
             }
@@ -97,8 +116,37 @@ class Photobox extends Station {
         return null;
     }
 
+    loadPieces() {
+        if (this.piecesLoaded) return;
+
+        return new Promise((resolve, reject) => {
+            fs.readdir(this.pieceDir, (err, filenames) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                filenames.forEach((filename) => {
+                    let content = fs.readFileSync(this.pieceDir + filename, 'utf-8');
+                    let piece = JSON.parse(content);
+                    this.pieces.push(piece);
+
+                    this.index = Math.max(this.index, piece.pieceIndex + 1);
+                });
+
+                this.piecesLoaded = true;
+
+                resolve();
+            });
+        });
+    }
+
     async execute(plate) {
-        console.log('Photobox: start execute');
+        if (!this.piecesLoaded) {
+            await this.loadPieces();
+        }
+
+        logger.notice('Executing...');
         plate.setNotReady();
 
         try {
@@ -106,7 +154,7 @@ class Photobox extends Station {
             let filename = __dirname + '/../../images/piece' + currentIndex + '.jpg';
 
             let imageBuffer = await camera.takeImage();
-            //this.setReady();
+            this.setReady();
 
             imageBuffer = await this.cropImageBuffer(imageBuffer);
             await sharp(imageBuffer).toFile(filename);
@@ -120,25 +168,19 @@ class Photobox extends Station {
 
             if (typeof piece.errorMessage !== 'undefined') {
                 if (piece.errorMessage === 'No areas found') {
-                    console.log('Photobox: empty.');
+                    logger.debug('Empty');
                     plate.setData('valid', false);
                     plate.setData('empty', true);
                     plate.setData('error', 'empty');
-                    setTimeout(() => {
-                        this.setReady();
-                        plate.setReady();
-                    }, 5000);
+                    plate.setReady();
 
                     return;
                 }
 
-                console.log('Photobox: error: ' + piece.errorMessage);
+                logger.error('Error: ' + piece.errorMessage);
                 plate.setData('valid', false);
                 plate.setData('error', piece.errorMessage);
-                setTimeout(() => {
-                    this.setReady();
-                    plate.setReady();
-                }, 5000);
+                plate.setReady();
 
                 return;
             }
@@ -151,13 +193,12 @@ class Photobox extends Station {
                 };
                 this.pieces.push(piece);
 
-                console.log('Photobox: scan complete.');
+                fs.writeFile(this.pieceDir + currentIndex, JSON.stringify(piece));
+
+                logger.info('scan complete.');
                 plate.setData('piece', piece);
                 plate.setData('valid', true);
-                setTimeout(() => {
-                    this.setReady();
-                    plate.setReady();
-                }, 5000);
+                plate.setReady();
 
                 return;
             }
@@ -165,53 +206,44 @@ class Photobox extends Station {
             if (mode.getMode() === 'compare') {
                 await this.compareReady();
 
-                let foundPieceIndex = await api.call('findexistingpieceindex', {
+                let foundPieceInfo = await api.call('findexistingpieceindex', {
                     pieces: this.getValidPieces(),
                     piece: piece
                 });
 
-                if (foundPieceIndex === null) {
-                    console.log('Photobox: compare error: ' + 'Couldn\'t match this piece with an existing piece.');
+                if (foundPieceInfo === null) {
+                    logger.error('compare error: ' + 'Couldn\'t match this piece with an existing piece.');
                     plate.setData('valid', false);
                     plate.setData('error', 'Couldn\'t match this piece with an existing piece.');
-                    setTimeout(() => {
-                        this.setReady();
-                        plate.setReady();
-                    }, 5000);
+                    plate.setReady();
 
                     return;
                 }
 
-                let position = this.findPiecePosition(foundPieceIndex);
+                let position = this.findPiecePosition(foundPieceInfo.pieceIndex);
 
                 if (position === null) {
-                    console.log('Photobox: compare error: ' + 'Something unexpected happened.. couldn\'t find the matching piece in the placement list :(');
+                    logger.error('compare error: ' + 'Something unexpected happened.. couldn\'t find the matching piece in the placement list :(');
                     plate.setData('valid', false);
                     plate.setData('error', 'Something unexpected happened.. couldn\'t find the matching piece in the placement list :(');
-                    setTimeout(() => {
-                        this.setReady();
-                        plate.setReady();
-                    }, 5000);
+                    plate.setReady();
 
                     return;
                 }
 
-                console.log('Photobox: compare complete.', position);
+                logger.info('compare complete.', position);
                 plate.setData('valid', true);
+                plate.setData('piece', piece);
                 plate.setData('position', position);
-                setTimeout(() => {
-                    this.setReady();
-                    plate.setReady();
-                }, 5000);
+                plate.setData('sideOffset', foundPieceInfo.sideOffset);
+                plate.setData('piecePlacements', this.piecePlacements);
+                plate.setReady();
             }
         } catch (err) {
-            console.log('Photobox: execution error: ', err, err.stack);
+            logger.error('execution error: ', err, err.stack);
             plate.setData('valid', false);
             plate.setData('error', err.toString());
-            setTimeout(() => {
-                this.setReady();
-                plate.setReady();
-            }, 5000);
+            plate.setReady();
         }
     }
 }

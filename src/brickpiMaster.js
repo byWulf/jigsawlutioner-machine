@@ -1,9 +1,13 @@
 const brickpi3 = require('brickpi3');
 const rpio = require('rpio');
 
-function Brickpi() {
+const colors = require('colors');
+const logger = require('./logger').getInstance('BrickPi (master)'.red);
+
+function BrickPiMaster() {
     this.isInitialized = false;
     this.conveyorPosition = 0;
+    this.modeSwitcherCallbacks = [];
 
     this.init = async () => {
         if (this.isInitialized) return;
@@ -19,8 +23,6 @@ function Brickpi() {
         this.conveyorSensor = {pin: 3};
     
         this.rotatorYMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_B);
-        this.rotatorYSensor = brickpi3.utils.getSensor(this.BP, this.BP.PORT_4);
-        await this.rotatorYSensor.setType(this.rotatorYSensor.BP.SENSOR_TYPE.EV3_TOUCH);
         this.rotatorRotateMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_A);
     
         this.plateZSensor = brickpi3.utils.getSensor(this.BP, this.BP.PORT_1);
@@ -29,10 +31,30 @@ function Brickpi() {
     
         rpio.open(this.conveyorSensor.pin, rpio.INPUT, rpio.PULL_DOWN);
 
+        this.modeSwitcher = brickpi3.utils.getSensor(this.BP, this.BP.PORT_2);
+        await this.modeSwitcher.setType(this.modeSwitcher.BP.SENSOR_TYPE.EV3_TOUCH);
+        this._startModeSwitcherListener();
+
         this.isInitialized = true;
     };
 
+    this._startModeSwitcherListener = () => {
+        return new Promise(async(resolve) => {
+            while (true) {
+                await this.modeSwitcher.waitFor(1);
+                for (let i = 0; i < this.modeSwitcherCallbacks.length; i++) {
+                    this.modeSwitcherCallbacks[i]();
+                }
+                await this.modeSwitcher.waitFor(0);
+            }
+        });
+    };
+
     this.resetMotors = async () => {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+
         //First all y motors so they dont block anything
         await Promise.all([this._resetRotatorY()]);
 
@@ -41,14 +63,7 @@ function Brickpi() {
     };
 
     this._resetRotatorY = async () => {
-        let initialSensorState = await this.rotatorYSensor.getValue();
-
-        if (!initialSensorState) {
-            await this.rotatorYMotor.setPower(10, async () => {
-                return await this.rotatorYSensor.getValue() === 1;
-            });
-        }
-        await this.rotatorYMotor.setEncoder(await this.rotatorYMotor.getEncoder());
+        await brickpi3.utils.resetMotorEncoder(this.rotatorYMotor.BP, this.rotatorYMotor.port, brickpi3.utils.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 10, 10000, 30);
     };
 
     this._resetRotatorRotate = async () => {
@@ -94,7 +109,9 @@ function Brickpi() {
     };
 
     this.nextPlate = async () => {
+        logger.debug('nextPlate: beginning');
         if (!this.isInitialized) {
+            logger.debug('nextPlate: awaiting init');
             await this.init();
         }
 
@@ -103,7 +120,9 @@ function Brickpi() {
 
         this.conveyorPosition -= (partsPerPlate / partsPerRotation * 360);
 
+        logger.debug('nextPlate: setting position');
         await this.conveyorMotor.setPosition(this.conveyorPosition, 50);
+        logger.debug('nextPlate: position set');
     };
 
 
@@ -113,7 +132,7 @@ function Brickpi() {
         }
 
         let rotateConversion = 60/12;
-        let extraRotate = 10;
+        let extraRotate = 2;
 
         while (degree > 180) degree -= 360;
         while (degree < -180) degree += 360;
@@ -121,7 +140,7 @@ function Brickpi() {
         if (degree < 0) degree -= extraRotate;
         if (degree > 0) degree += extraRotate;
 
-        await this.rotatorYMotor.setPosition(-700);
+        await this.rotatorYMotor.setPosition(370);
         await this.rotatorRotateMotor.setPosition(degree * rotateConversion);
 
         await this.rotatorYMotor.setPosition(0);
@@ -135,6 +154,11 @@ function Brickpi() {
         if (x > 40) {
             throw new Error('Board is only 40cm long. Please specify a value below or equal 40cm.');
         }
+        if (x < 0) {
+            throw new Error('Board x position must be at least at 0cm. Got ' + x + 'cm.');
+        }
+
+        logger.debug('prepareBoard: ', x);
 
         const cmPerTeeth = 3.2 / 10; //https://www.brickowl.com/catalog/lego-gear-rack-4-3743
         const cmPerRotation = cmPerTeeth * 20; //https://www.brickowl.com/catalog/lego-double-bevel-gear-with-20-teeth-unreinforced-32269
@@ -142,6 +166,26 @@ function Brickpi() {
 
         await Promise.all([this.plateZMotor.setPosition(-targetMotorPosition, 100)]);
     };
+
+    this.selectBox1 = async () => {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+
+        await this.plateZMotor.setPosition(-528, 100);
+    };
+
+    this.selectBox2 = async () => {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+
+        await this.plateZMotor.setPosition(-1595, 100);
+    };
+
+    this.onModeSwitch = (callback) => {
+        this.modeSwitcherCallbacks.push(callback);
+    }
 }
 
-module.exports = new Brickpi();
+module.exports = new BrickPiMaster();

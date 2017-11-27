@@ -243,8 +243,8 @@ io.on('connection', (socket) => {
                 api.call('findexistingpieceindex', {
                     pieces: getValidPieces(),
                     piece: piece
-                }).then((foundPieceIndex) => {
-                    if (foundPieceIndex === null) {
+                }).then((foundPieceInfo) => {
+                    if (foundPieceInfo === null) {
                         waitIns.push({
                             count: 2,
                             task: 'Couldn\'t match this piece with an existing piece. Please rescan it.'
@@ -260,7 +260,7 @@ io.on('connection', (socket) => {
                                 for (let y in piecePlacements[groupIndex][x]) {
                                     if (!piecePlacements[groupIndex][x].hasOwnProperty(y)) continue;
 
-                                    if (piecePlacements[groupIndex][x][y].pieceIndex !== foundPieceIndex) continue;
+                                    if (piecePlacements[groupIndex][x][y].pieceIndex !== foundPieceInfo.pieceIndex) continue;
 
                                     found = true;
                                     waitIns.push({
