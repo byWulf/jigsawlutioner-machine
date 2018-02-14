@@ -22,6 +22,10 @@ server.on('connection', (socket) => {
                 await brickPi.resetMotors();
                 break;
 
+            case 'standby':
+                await brickPi.standby();
+                break;
+
             case 'collect':
                 await brickPi.collect(message.data.offset);
                 break;

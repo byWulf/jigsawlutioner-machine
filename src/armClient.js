@@ -115,6 +115,13 @@ function ArmClient() {
     };
 
     /**
+     * @return {Promise<any>}
+     */
+    this.standby = () => {
+        return this._sendCommand('standby');
+    };
+
+    /**
      * @param {int} offset
      * @return {Promise<any>}
      */

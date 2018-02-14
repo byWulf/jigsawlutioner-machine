@@ -75,6 +75,17 @@ function BrickPiArm() {
         await this.brickPiHelper.resetMotorEncoder(this.plateXMotor.BP, this.plateXMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.FORWARD_LIMIT, 0, 1, 10000, 60);
     };
 
+    this.standby = async () => {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+
+        await Promise.all([
+            this.plateXMotor.setPosition(0, 100),
+            this.armXMotor.setPosition(this.collectConveyorCenter, 100)
+        ]);
+    };
+
     /**
      * @param {int} offset
      * @return {Promise<void>}
@@ -156,7 +167,7 @@ function BrickPiArm() {
             await this.init();
         }
 
-        let additionalOffset = (360 * 7/*cm*/ / this.cmPerRotation); //5cm to move the puzzle from the platform
+        let additionalOffset = (360 * 8/*cm*/ / this.cmPerRotation); //5cm to move the puzzle from the platform
         let currentEncoder = await this.plateXMotor.getEncoder();
 
         this.logger.debug('Current encoder: ' + currentEncoder + ', additionalOffset: ' + additionalOffset + ', result: ' + (currentEncoder - additionalOffset));
