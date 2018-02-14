@@ -264,6 +264,20 @@ class Photobox extends Station {
     }
 
     /**
+     * @param {string} filename
+     * @return {Promise<Piece>}
+     */
+    async getPieceFromFile(filename) {
+        let currentIndex = this.index++;
+
+        // noinspection JSUnresolvedFunction
+        let imageBuffer = await this.sharp(filename).toBuffer();
+        let pieceData = await this.parseImage(currentIndex, imageBuffer);
+
+        return this.createPiece(currentIndex, pieceData);
+    }
+
+    /**
      * @param {Plate} plate
      * @param {Piece} piece
      * @return {Promise<void>}
@@ -317,7 +331,7 @@ class Photobox extends Station {
             pieces: this.getApiPiecesList(this.pieces),
             piece: this.getApiPiece(piece)
         });
-        this.logger.debug('after api call');
+        this.logger.debug('after api call', foundPieceInfo);
 
         if (foundPieceInfo === null) {
             // noinspection ExceptionCaughtLocallyJS
@@ -339,7 +353,7 @@ class Photobox extends Station {
             throw new Error('Matched piece not found in existing pieces. Straaaange...');
         }
 
-        this.logger.info('compare complete.', existingPiece.absolutePosition);
+        this.logger.info('compare complete');
         plate.setData('valid', true);
         plate.setData('piece', existingPiece);
         plate.setData('sideOffset', foundPieceInfo['sideOffset']);
