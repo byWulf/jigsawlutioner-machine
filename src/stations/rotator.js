@@ -36,12 +36,13 @@ class Rotator extends Station {
 
             this.logger.debug('Side should be up: ', targetSide, " because baseSide is " + data['piece'].absolutePosition.baseSide + " and sideOffset is " + data['sideOffset']);
             for (let i = 0; i < 4; i++) {
-                this.logger.debug('points of side ' + i, data.piece.sides[i]['startPoint'], data.piece.sides[i]['endPoint']);
+                this.logger.debug('points of side ' + i, data['piece'].sides[i]['startPoint'], data['piece'].sides[i]['endPoint']);
             }
 
             let rotation = this.getRotation(data['piece'], targetSide);
             this.logger.info('Rotating piece ' + rotation + ' degree');
             await this.brickPi.rotatePiece(rotation);
+            data['piece'].absolutePosition.baseSide = (data['piece'].absolutePosition.baseSide + data['sideOffset']) % 4;
 
             this.setReady();
         }
