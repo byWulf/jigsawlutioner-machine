@@ -1,8 +1,8 @@
 {
   "name": "jigsawlutioner-machine",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
-  "main": "index.js",
+  "main": "indexMaster.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/byWulf/jigsawlutioner-machine.git"
@@ -22,7 +22,6 @@
     "colors": "^1.1.2",
     "express": "^4.15.3",
     "font-awesome": "^4.7.0",
-    "jigsawlutioner": "git+ssh://git@github.com:byWulf/jigsawlutioner.git",
     "jquery": "^3.2.1",
     "json-socket": "^0.3.0",
     "keypress": "^0.2.1",
@@ -34,5 +33,8 @@
     "sharp": "^0.18.2",
     "socket.io": "^2.0.3",
     "tether": "^1.4.0"
+  },
+  "devDependencies": {
+    "jigsawlutioner": "git+ssh://git@github.com:byWulf/jigsawlutioner.git"
   }
 }

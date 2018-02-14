@@ -1,45 +1,58 @@
-const brickpi3 = require('brickpi3');
-const rpio = require('rpio');
-
-const colors = require('colors');
-const logger = require('./logger').getInstance('BrickPi (master)'.red);
+require('colors');
 
 function BrickPiMaster() {
+    this.logger = require('./logger').getInstance('BrickPi (arm)'.red);
+    this.brickPi = require('brickpi3');
+    this.brickPiHelper = require('./brickPiHelper');
+    this.rpio = require('rpio');
+
     this.isInitialized = false;
     this.conveyorPosition = 0;
     this.modeSwitcherCallbacks = [];
 
+    /**
+     * @return {Promise<void>}
+     */
     this.init = async () => {
         if (this.isInitialized) return;
 
-        await brickpi3.set_address(1, 'A778704A514D355934202020FF110722');
-        await brickpi3.set_address(2, 'DF9E6AC3514D355934202020FF112718');
+        await this.brickPi.set_address(1, 'A778704A514D355934202020FF110722');
+        await this.brickPi.set_address(2, 'DF9E6AC3514D355934202020FF112718');
     
-        this.BP = new brickpi3.BrickPi3(2);
+        this.BP = new this.brickPi.BrickPi3(2);
     
-        brickpi3.utils.resetAllWhenFinished(this.BP);
+        this.brickPi.utils.resetAllWhenFinished(this.BP);
     
-        this.conveyorMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_C);
+        // noinspection JSUnresolvedFunction
+        this.conveyorMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_A);
         this.conveyorSensor = {pin: 3};
     
-        this.rotatorYMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_B);
-        this.rotatorRotateMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_A);
+        // noinspection JSUnresolvedFunction
+        this.rotatorYMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_D);
+        // noinspection JSUnresolvedFunction
+        this.rotatorRotateMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_C);
     
-        this.plateZSensor = brickpi3.utils.getSensor(this.BP, this.BP.PORT_1);
-        await this.plateZSensor.setType(this.plateZSensor.BP.SENSOR_TYPE.EV3_TOUCH);
-        this.plateZMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_D);
+        // noinspection JSUnresolvedFunction
+        this.plateZMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_B);
     
-        rpio.open(this.conveyorSensor.pin, rpio.INPUT, rpio.PULL_DOWN);
+        this.rpio.open(this.conveyorSensor.pin, this.rpio.INPUT, this.rpio.PULL_DOWN);
 
-        this.modeSwitcher = brickpi3.utils.getSensor(this.BP, this.BP.PORT_2);
+        // noinspection JSUnresolvedFunction
+        this.modeSwitcher = this.brickPi.utils.getSensor(this.BP, this.BP.PORT_3);
         await this.modeSwitcher.setType(this.modeSwitcher.BP.SENSOR_TYPE.EV3_TOUCH);
+        // noinspection JSIgnoredPromiseFromCall
         this._startModeSwitcherListener();
 
         this.isInitialized = true;
     };
 
+    /**
+     * @return {Promise<void>}
+     * @private
+     */
     this._startModeSwitcherListener = () => {
-        return new Promise(async(resolve) => {
+        return new Promise(async() => {
+            // noinspection InfiniteLoopJS
             while (true) {
                 await this.modeSwitcher.waitFor(1);
                 for (let i = 0; i < this.modeSwitcherCallbacks.length; i++) {
@@ -50,6 +63,9 @@ function BrickPiMaster() {
         });
     };
 
+    /**
+     * @return {Promise<void>}
+     */
     this.resetMotors = async () => {
         if (!this.isInitialized) {
             await this.init();
@@ -62,21 +78,33 @@ function BrickPiMaster() {
         await Promise.all([this._resetRotatorRotate(), this._resetConveyor(), this._resetPlateZ()]);
     };
 
+    /**
+     * @return {Promise<void>}
+     * @private
+     */
     this._resetRotatorY = async () => {
-        await brickpi3.utils.resetMotorEncoder(this.rotatorYMotor.BP, this.rotatorYMotor.port, brickpi3.utils.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 10, 10000, 30);
+        await this.brickPiHelper.resetMotorEncoder(this.rotatorYMotor.BP, this.rotatorYMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 10, 10000, 30);
     };
 
+    /**
+     * @return {Promise<void>}
+     * @private
+     */
     this._resetRotatorRotate = async () => {
         await this.rotatorRotateMotor.setEncoder(await this.rotatorRotateMotor.getEncoder());
     };
 
+    /**
+     * @return {Promise<void>}
+     * @private
+     */
     this._resetConveyor = async () => {
         return new Promise(async (resolve) => {
             await this.conveyorMotor.setPower(-50);
 
             let lastHit = null;
             setTimeout(async () => {
-                await rpio.poll(this.conveyorSensor.pin, async () => {
+                await this.rpio.poll(this.conveyorSensor.pin, async () => {
                     if (lastHit === null) {
                         lastHit = Date.now();
                         return;
@@ -86,7 +114,7 @@ function BrickPiMaster() {
                     }
 
                     await this.conveyorMotor.setPower(0);
-                    rpio.poll(this.conveyorSensor.pin);
+                    this.rpio.poll(this.conveyorSensor.pin);
 
                     await this.conveyorMotor.setEncoder(await this.conveyorMotor.getEncoder());
                     this.conveyorPosition = 0;
@@ -97,35 +125,38 @@ function BrickPiMaster() {
         });
     };
 
+    /**
+     * @return {Promise<void>}
+     * @private
+     */
     this._resetPlateZ = async () => {
-        let initialSensorState = await this.plateZSensor.getValue();
-
-        if (!initialSensorState) {
-            await this.plateZMotor.setPower(50, async () => {
-                return await this.plateZSensor.getValue() === 1;
-            });
-        }
-        await this.plateZMotor.setEncoder(await this.plateZMotor.getEncoder());
+        await this.brickPiHelper.resetMotorEncoder(this.plateZMotor.BP, this.plateZMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 20, 10000, 40);
     };
 
+    /**
+     * @return {Promise<void>}
+     */
     this.nextPlate = async () => {
-        logger.debug('nextPlate: beginning');
+        this.logger.debug('nextPlate: beginning');
         if (!this.isInitialized) {
-            logger.debug('nextPlate: awaiting init');
+            this.logger.debug('nextPlate: awaiting init');
             await this.init();
         }
 
         let partsPerRotation = 10;
         let partsPerPlate = 6;
 
-        this.conveyorPosition -= (partsPerPlate / partsPerRotation * 360);
+        this.conveyorPosition += (partsPerPlate / partsPerRotation * 360);
 
-        logger.debug('nextPlate: setting position');
-        await this.conveyorMotor.setPosition(this.conveyorPosition, 50);
-        logger.debug('nextPlate: position set');
+        this.logger.debug('nextPlate: setting position');
+        await this.conveyorMotor.setPosition(-this.conveyorPosition, 50);
+        this.logger.debug('nextPlate: position set');
     };
 
-
+    /**
+     * @param {number} degree
+     * @return {Promise<void>}
+     */
     this.rotatePiece = async (degree) => {
         if (!this.isInitialized) {
             await this.init();
@@ -147,42 +178,35 @@ function BrickPiMaster() {
         await this.rotatorRotateMotor.setPosition(0);
     };
 
+    /**
+     * @param {number} x
+     * @return {Promise<void>}
+     */
     this.prepareBoard = async (x) => {
         if (!this.isInitialized) {
             await this.init();
         }
-        if (x > 40) {
-            throw new Error('Board is only 40cm long. Please specify a value below or equal 40cm.');
+        let sizeCm = 37;
+        if (x > sizeCm) {
+            throw new Error('Board is only ' + sizeCm + 'cm long. Please specify a value below or equal ' + sizeCm + 'cm.');
         }
         if (x < 0) {
             throw new Error('Board x position must be at least at 0cm. Got ' + x + 'cm.');
         }
 
-        logger.debug('prepareBoard: ', x);
+        this.logger.debug('prepareBoard: ', x);
 
         const cmPerTeeth = 3.2 / 10; //https://www.brickowl.com/catalog/lego-gear-rack-4-3743
         const cmPerRotation = cmPerTeeth * 20; //https://www.brickowl.com/catalog/lego-double-bevel-gear-with-20-teeth-unreinforced-32269
         let targetMotorPosition = 360 * x / cmPerRotation;
+        let maxMotorPosition = 360 * sizeCm / cmPerRotation;
 
-        await Promise.all([this.plateZMotor.setPosition(-targetMotorPosition, 100)]);
+        await Promise.all([this.plateZMotor.setPosition(maxMotorPosition - targetMotorPosition, 100)]);
     };
 
-    this.selectBox1 = async () => {
-        if (!this.isInitialized) {
-            await this.init();
-        }
-
-        await this.plateZMotor.setPosition(-528, 100);
-    };
-
-    this.selectBox2 = async () => {
-        if (!this.isInitialized) {
-            await this.init();
-        }
-
-        await this.plateZMotor.setPosition(-1595, 100);
-    };
-
+    /**
+     * @param {function} callback
+     */
     this.onModeSwitch = (callback) => {
         this.modeSwitcherCallbacks.push(callback);
     }

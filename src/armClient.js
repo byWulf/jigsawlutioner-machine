@@ -1,10 +1,11 @@
+require('colors');
+
 const net = require('net');
 const JsonSocket = require('json-socket');
 
 const port = 1201;
 const host = '192.168.0.36'; //jigsawlutioner-arm
 
-const colors = require('colors');
 const logger = require('./logger').getInstance('ArmClient'.yellow);
 
 function ArmClient() {
@@ -14,6 +15,9 @@ function ArmClient() {
     this._index = 0;
     this._answers = {};
 
+    /**
+     * @return {Promise<void>}
+     */
     this.waitForConnect = () => {
         return new Promise((resolve) => {
             let interval = setInterval(() => {
@@ -25,15 +29,25 @@ function ArmClient() {
         });
     };
 
+    /**
+     * @return {Promise<void>}
+     */
     this.connect = () => {
-        if (this.isConnected) return;
-        if (this.connecting) {
-            return this.waitForConnect();
-        }
+        return new Promise(async (resolve) => {
+            if (this.isConnected) {
+                resolve();
 
-        this.connecting = true;
+                return;
+            }
+            if (this.connecting) {
+                await this.waitForConnect();
+                resolve();
 
-        return new Promise((resolve) => {
+                return;
+            }
+
+            this.connecting = true;
+
             this.socket = new JsonSocket(new net.Socket());
             this.socket.connect(port, host);
             this.socket.on('connect', () => {
@@ -54,6 +68,12 @@ function ArmClient() {
         });
     };
 
+    /**
+     * @param {string} command
+     * @param {*=} additionalData
+     * @return {Promise<any>}
+     * @private
+     */
     this._sendCommand = (command, additionalData) => {
         logger.debug("sending command");
         return new Promise(async (resolve) => {
@@ -65,6 +85,7 @@ function ArmClient() {
 
             let index = this._index++;
             logger.debug("sending message", {index: index, command: command, data: additionalData});
+            // noinspection JSUnresolvedFunction
             this.socket.sendMessage({index: index, command: command, data: additionalData});
             logger.debug("message sent.");
 
@@ -86,18 +107,46 @@ function ArmClient() {
         });
     };
 
+    /**
+     * @return {Promise<any>}
+     */
     this.reset = () => {
         return this._sendCommand('reset');
     };
 
+    /**
+     * @param {int} offset
+     * @return {Promise<any>}
+     */
     this.collect = (offset) => {
         return this._sendCommand('collect', {offset: offset});
     };
 
+    /**
+     * @return {Promise<any>}
+     */
+    this.moveToPlatform = () => {
+        return this._sendCommand('moveToPlatform');
+    };
+
+    /**
+     * @return {Promise<any>}
+     */
+    this.moveToTrash = () => {
+        return this._sendCommand('moveToTrash');
+    };
+
+    /**
+     * @param {number} x
+     * @return {Promise<any>}
+     */
     this.moveTo = (x) => {
         return this._sendCommand('moveTo', {x: x});
     };
 
+    /**
+     * @return {Promise<any>}
+     */
     this.place = () => {
         return this._sendCommand('place');
     };

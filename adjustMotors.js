@@ -5,10 +5,10 @@ let BP;
 
 function letUserControlMotors() {
     let mapping = [
-        {motor: brickpi3.utils.getMotor(BP, BP.PORT_A), power: 0, keyForward: 'q', keyBackward: 'a'},
-        {motor: brickpi3.utils.getMotor(BP, BP.PORT_B), power: 0, keyForward: 'w', keyBackward: 's'},
-        {motor: brickpi3.utils.getMotor(BP, BP.PORT_C), power: 0, keyForward: 'e', keyBackward: 'd'},
-        {motor: brickpi3.utils.getMotor(BP, BP.PORT_D), power: 0, keyForward: 'r', keyBackward: 'f'}
+        {label: 'A', motor: brickpi3.utils.getMotor(BP, BP.PORT_A), power: 0, keyForward: 'q', keyBackward: 'a'},
+        {label: 'B', motor: brickpi3.utils.getMotor(BP, BP.PORT_B), power: 0, keyForward: 'w', keyBackward: 's'},
+        {label: 'C', motor: brickpi3.utils.getMotor(BP, BP.PORT_C), power: 0, keyForward: 'e', keyBackward: 'd'},
+        {label: 'D', motor: brickpi3.utils.getMotor(BP, BP.PORT_D), power: 0, keyForward: 'r', keyBackward: 'f'}
     ];
 
     keypress(process.stdin);
@@ -30,7 +30,7 @@ function letUserControlMotors() {
 
                 await mapping[i].motor.setPower(mapping[i].power);
                 if (mapping[i].power === 0) {
-                    console.log('Encoder now: ', await mapping[i].motor.getEncoder());
+                    console.log('Encoder of ' + mapping[i].label + ' now: ', await mapping[i].motor.getEncoder());
                 }
             }
         }

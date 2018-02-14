@@ -1,9 +1,10 @@
+require('colors');
+
 const Conveyor = require('./src/conveyor');
 const brickPi = require('./src/brickpiMaster');
 const armClient = require('./src/armClient');
-const mode = require('./src/mode');
+const mode = require('./src/modeService');
 
-const colors = require('colors');
 const logger = require('./src/logger').getInstance('Main'.green);
 
 (async () => {

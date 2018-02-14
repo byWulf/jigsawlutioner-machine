@@ -1,20 +1,30 @@
+require('colors');
+
 const Station = require('./station');
-const armClient = require('../armClient');
-const brickPi = require('../brickpiMaster');
-const colors = require('colors');
-const logger = require('../logger').getInstance('Station'.cyan + ' Arm'.magenta);
-const mode = require('../mode');
-const ShelfPack = require('@mapbox/shelf-pack');
 
 class Arm extends Station {
     constructor() {
         super();
 
+        this.logger = require('../logger').getInstance('Station'.cyan + ' Arm'.magenta);
+        this.modeService = require('../modeService');
+        this.armClient = require('../armClient');
+        this.brickPiMaster = require('../brickpiMaster');
+
         this.armFinished = true;
 
-        this.groupOffsets = null;
+        this.groupsOrdered = false;
+
+        this.pieceDistance = 3;
+        this.tileWidth = Math.floor(30/*cm on z-axis*/ / this.pieceDistance);
+        this.tileHeight = Math.floor(25/*cm on x-axis*/ / this.pieceDistance);
     }
 
+    /**
+     * Waits for the arm to finish its last action.
+     *
+     * @return {Promise<void>}
+     */
     waitForArmFinished() {
         return new Promise((resolve) => {
             let interval = setInterval(() => {
@@ -26,126 +36,223 @@ class Arm extends Station {
         });
     }
 
-    async execute(plate) {
-        logger.notice('Executing...');
-        logger.debug('getting data');
-        let data = await plate.getData();
-        logger.debug('got data.');
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Tests the correct placement position. No piece needed for this.
+     *
+     * @param {int} x
+     * @param {int} y
+     * @return {Promise<void>}
+     */
+    async testPlacement(x, y) {
+        await this.armClient.collect(0);
+        await this.armClient.moveToPlatform();
 
-        if (typeof data.valid === 'undefined' || !data.valid) {
-            logger.info('Plate empty or not recognized. returning.');
-            this.setReady();
-            return;
-        }
+        await Promise.all([
+            this.armClient.moveTo(y),
+            this.brickPiMaster.prepareBoard(x)
+        ]);
+
+        await this.armClient.place();
+
+
+        this.setReady();
+        this.armFinished = true;
+    }
+
+    /**
+     * Calculates the x offset of the piece on the plate.
+     *
+     * @param {Piece} piece
+     * @return {number}
+     */
+    getArmOffset(piece) {
+        this.logger.debug('Position of piece', piece);
+        let center = piece.boundingBox.top + (piece.boundingBox.bottom - piece.boundingBox.top) / 2;
+        let armOffset = (center - 495) / 495;
+        this.logger.debug('arm offset: ', armOffset);
+
+        return armOffset;
+    }
+
+    /**
+     * Moves the piece to the box.
+     *
+     * @param {Piece} piece
+     * @param {int} boxIndex
+     * @return {Promise<void>}
+     */
+    async movePieceToBox(piece, boxIndex) {
+        this.logger.info('Moving piece to box');
 
         await this.waitForArmFinished();
-        logger.debug("arm finished");
+        this.logger.debug("arm finished");
         this.armFinished = false;
 
-        if (mode.getMode() === 'scan') {
-            logger.info('Piece recognized. Moving it to box 1');
+        await this.armClient.collect(this.getArmOffset(piece));
+        this.logger.debug("collected");
 
-            logger.debug('Position of piece', data);
-            let center = data.piece.boundingBox.top + (data.piece.boundingBox.bottom - data.piece.boundingBox.top) / 2;
-            let armOffset = -(495 - center) / 2;
-            logger.debug('arm offset: ', armOffset);
-            await armClient.collect(armOffset);
-            logger.debug("collected");
-            this.setReady();
+        await this.armClient.moveToTrash();
+        this.logger.debug("Moved to trash");
 
-            await Promise.all([
-                armClient.moveTo(10),
-                brickPi.selectBox1()
-            ]);
+        this.setReady();
+        this.armFinished = true;
+    }
 
-            logger.debug("moved and box selected");
-            await armClient.place();
-            logger.debug("placed");
+    /**
+     * Packs the groups and determines, where each group should be positioned.
+     *
+     * @param {Group[]} groups
+     * @return {void}
+     */
+    orderGroups(groups) {
+        if (this.groupsOrdered) return;
 
-            this.armFinished = true;
-        } else if (mode.getMode() === 'compare') {
-            let pieceDistance = 3;
+        this.logger.debug('Ordering groups');
 
-            if (this.groupOffsets === null) {
-                this.groupOffsets = [];
-                for (let groupIndex in data.piecePlacements) {
-                    if (!data.piecePlacements.hasOwnProperty(groupIndex)) continue;
+        let packArray = [];
 
-                    let group = {groupIndex: groupIndex};
+        const BoardPosition = require('../models/BoardPosition');
+        for (let i = 0; i < groups.length; i++) {
+            if (groups[i].pieces.length > 1) {
 
-                    let minY = 0, minX = 0, maxY = 0, maxX = 0, count = 0;
-                    for (let x in data.piecePlacements[groupIndex]) {
-                        if (!data.piecePlacements[groupIndex].hasOwnProperty(x)) continue;
+                groups[i].ownPosition = new BoardPosition();
 
-                        for (let y in data.piecePlacements[groupIndex][x]) {
-                            if (!data.piecePlacements[groupIndex][x].hasOwnProperty(y)) continue;
+                // noinspection JSUndefinedPropertyAssignment
+                groups[i].ownPosition.w = groups[i].toX - groups[i].fromX + 2;
+                // noinspection JSUndefinedPropertyAssignment
+                groups[i].ownPosition.h = groups[i].toY - groups[i].fromY + 2;
 
-                            minY = Math.min(minY, parseInt(y, 10));
-                            maxY = Math.max(maxY, parseInt(y, 10));
-                            minX = Math.min(minX, parseInt(x, 10));
-                            maxX = Math.max(maxX, parseInt(x, 10));
-
-                            count++;
-                        }
-                    }
-
-                    group.innerOffsetX = minX;
-                    group.innerOffsetY = minY;
-
-                    group.realWidth = maxX - minX;
-                    group.realHeight = maxY - minY;
-
-                    group.w = maxX - minX + 2;
-                    group.h = maxY - minY + 2;
-
-                    if (count > 1) {
-                        this.groupOffsets.push(group);
-                    }
-                }
-
-                let sprite = new ShelfPack(40 / pieceDistance + 1, 32 / pieceDistance + 1);
-                sprite.pack(this.groupOffsets, {inPlace: true});
-                logger.debug(this.groupOffsets);
+                packArray.push(groups[i].ownPosition);
             }
+        }
 
-            let groupOffset = null;
-            for (let i = 0; i < this.groupOffsets.length; i++) {
-                if (parseInt(this.groupOffsets[i].groupIndex, 10) === parseInt(data.position.groupIndex, 10)) {
-                    groupOffset = this.groupOffsets[i];
-                    break;
-                }
+        const ShelfPack = require('@mapbox/shelf-pack');
+        let sprite = new ShelfPack(this.tileWidth * 1000, this.tileHeight * 1000);
+        // noinspection JSUnresolvedFunction
+        sprite.pack(packArray, {inPlace: true});
+
+        for (let i = 0; i < groups.length; i++) {
+            if (groups[i].pieces.length > 1) {
+                this.logger.debug('Group ' + groups[i].groupIndex + ' goes to: ', groups[i].ownPosition);
             }
+        }
 
-            if (groupOffset === null || typeof groupOffset.x === 'undefined') {
-                logger.info('Group with only one piece not placing');
-                this.setReady();
-                this.armFinished = true;
+        this.groupsOrdered = true;
+    }
+
+    /**
+     * Returns the target position for the piece. Null if the piece should not be placed on the board.
+     *
+     * @param {Group[]} groups
+     * @param {Piece} piece
+     * @return {BoardPosition}
+     */
+    getBoardPosition(groups, piece) {
+        this.orderGroups(groups);
+
+        let absolutePosition = piece.absolutePosition;
+        let group = absolutePosition.group;
+        let groupPosition = group.ownPosition;
+
+        if (groupPosition === null || typeof groupPosition.x === 'undefined') {
+            throw new Error('Group with only one piece not placing');
+        }
+
+        const BoardPosition = require('../models/BoardPosition');
+        let boardPosition = new BoardPosition();
+        boardPosition.x = groupPosition.x + group.getWidth() - (absolutePosition.x - group.fromX);
+        boardPosition.y = groupPosition.y + (absolutePosition.y - group.fromY);
+
+        this.logger.debug('Piece should go to board position ' + boardPosition.x + '/' + boardPosition.y + ' because of: ', groupPosition.x, groupPosition.y, group.fromX, group.fromY, group.getWidth(), group.getHeight(), absolutePosition.x, absolutePosition.y);
+
+        return boardPosition;
+    }
+
+    /**
+     * Takes the piece from the plate and places it to the given position on the board
+     * @param {Piece} piece
+     * @param {BoardPosition} boardPosition
+     * @return {Promise<void>}
+     */
+    async moveToBoard(piece, boardPosition) {
+        await this.waitForArmFinished();
+        this.logger.debug("arm finished");
+        this.armFinished = false;
+
+        this.logger.info('Moving piece to ' + boardPosition.x + '/' + boardPosition.y);
+
+        await this.armClient.collect(this.getArmOffset(piece));
+        this.logger.debug("collected");
+
+        await this.armClient.moveToPlatform();
+        this.logger.debug("moved to platform");
+
+        this.setReady();
+
+        await Promise.all([
+            this.armClient.moveTo(boardPosition.y * this.pieceDistance),
+            this.brickPiMaster.prepareBoard(boardPosition.x * this.pieceDistance)
+        ]);
+        this.logger.debug("moved");
+
+        await this.armClient.place();
+        this.logger.debug("placed");
+
+        this.armFinished = true;
+    }
+
+    /**
+     * Calculates, where the piece should go on the board and moves it to there.
+     *
+     * @param {Group[]} groups
+     * @param {Piece} piece
+     * @return {Promise<void>}
+     */
+    async placePiece(groups, piece) {
+        try {
+            let boardPosition = this.getBoardPosition(groups, piece);
+
+            if (boardPosition.x > this.tileWidth || boardPosition.y > this.tileHeight) {
+                this.logger.info('Piece not in current board.');
+                await this.movePieceToBox(piece, 0);
 
                 return;
             }
 
-            let x = groupOffset.x + groupOffset.realWidth - (data.position.x - groupOffset.innerOffsetX);
-            let y = groupOffset.y + (data.position.y - groupOffset.innerOffsetY);
-
-            logger.info('Moving piece to ' + x + '/' + y);
-            logger.debug('Position of piece', data);
-            let center = data.piece.boundingBox.top + (data.piece.boundingBox.bottom - data.piece.boundingBox.top) / 2;
-            let armOffset = -(495 - center) / 2;
-            logger.debug('arm offset: ', armOffset);
-            await armClient.collect(armOffset);
-            logger.debug("collected");
+            await this.moveToBoard(piece, boardPosition);
+        } catch (e) {
+            this.logger.info(e);
             this.setReady();
-
-            await Promise.all([
-                armClient.moveTo(y * pieceDistance + 5),
-                brickPi.prepareBoard(x * pieceDistance + 2)
-            ]);
-
-            logger.debug("moved and box selected");
-            await armClient.place();
-            logger.debug("placed");
-
             this.armFinished = true;
+        }
+    }
+
+    /**
+     * Executes the station.
+     *
+     * @param {Plate} plate
+     * @return {Promise<void>}
+     */
+    async execute(plate) {
+        /*await this.testPlacement(20, 0);
+        return;*/
+
+        this.logger.notice('Executing...');
+        this.logger.debug('getting data');
+        let data = await plate.getData();
+        this.logger.debug('got data.');
+
+        if (!data['valid']) {
+            this.logger.info('Plate empty or not recognized. returning.');
+            this.setReady();
+            return;
+        }
+
+        if (this.modeService.getMode() === 'scan') {
+            await this.movePieceToBox(data['piece'], 0);
+        } else if (this.modeService.getMode() === 'compare') {
+            await this.placePiece(data['groups'], data['piece']);
         } else {
             throw new Error('Invalid mode');
         }

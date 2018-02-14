@@ -4,51 +4,43 @@ function Camera() {
     this.isInitialized = false;
     this.currentCameraResolver = null;
     this.cameraProcess = null;
+    this.buffer = null;
 
+    this.parameters = [
+        '-t', '0',
+        '-s',
+        '-ss', '21000',
+        '-ex', 'night',
+        '-th', 'none',
+        '-sh', '100',
+        '-co', '0',
+        '-br', '50',
+        '-sa', '50',
+        '-ISO', '0',
+        '-awb', 'fluorescent',
+        '-mm', 'backlit',
+        '-drc', 'high',
+        '-st',
+        '-q', '50',
+        '-n',
+        '-e', 'jpg',
+        '-o', '-'
+    ];
+
+    /**
+     * @return {Promise<void>}
+     */
     this.init = () => {
         return new Promise((resolve) => {
             if (this.isInitialized) {
+                resolve();
                 return;
             }
 
-            this.cameraProcess = spawn('raspistill', [
-                '-t', '0',
-                '-s',
-                '-ss', '21000',
-                '-ex', 'night',
-                '-th', 'none',
-                '-sh', '100',
-                '-co', '0',
-                '-br', '50',
-                '-sa', '50',
-                '-ISO', '0',
-                '-awb', 'fluorescent',
-                '-mm', 'backlit',
-                '-drc', 'high',
-                '-st',
-                '-q', '50',
-                '-n',
-                '-e', 'jpg',
-                '-o', '-'
-            ]);
+            this.cameraProcess = spawn('raspistill', this.parameters);
 
-            let currentImageBuffer = null;
             this.cameraProcess.stdout.on('data', (data) => {
-                if (currentImageBuffer === null) {
-                    currentImageBuffer = data;
-                } else {
-                    currentImageBuffer = Buffer.concat([currentImageBuffer, data]);
-                }
-
-                let eoi;
-                while ((eoi = currentImageBuffer.indexOf(Buffer.from([0xff, 0xd9]))) > -1) {
-                    let imageBuffer = currentImageBuffer.slice(0, eoi + 2);
-                    currentImageBuffer = currentImageBuffer.slice(eoi + 2);
-
-                    if (this.currentCameraResolver !== null) {
-                        this.currentCameraResolver(imageBuffer);
-                    }
-                }
+                this.handleImageData(data);
             });
 
             this.cameraProcess.stderr.on('data', (data) => {
@@ -65,7 +57,30 @@ function Camera() {
         });
     };
 
+    /**
+     * @param {Buffer} data
+     */
+    this.handleImageData = (data) => {
+        if (this.buffer === null) {
+            this.buffer = data;
+        } else {
+            this.buffer = Buffer.concat([this.buffer, data]);
+        }
 
+        let eoi;
+        while ((eoi = this.buffer.indexOf(Buffer.from([0xff, 0xd9]))) > -1) {
+            let finishedImageBuffer = this.buffer.slice(0, eoi + 2);
+            this.buffer = this.buffer.slice(eoi + 2);
+
+            if (this.currentCameraResolver !== null) {
+                this.currentCameraResolver(finishedImageBuffer);
+            }
+        }
+    };
+
+    /**
+     * @return {Promise<Buffer>}
+     */
     this.takeImage = () => {
         return new Promise(async (resolve) => {
             if (!this.isInitialized) {

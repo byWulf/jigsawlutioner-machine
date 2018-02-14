@@ -1,22 +1,26 @@
+require('colors');
+
 const Station = require('./station');
-const camera = require('../camera');
-const sharp = require('sharp');
-const api = require('../api');
-const mode = require('../mode');
-const path = require("path");
-const colors = require('colors');
-const logger = require('../logger').getInstance('Station'.cyan + ' Photobox'.yellow);
-const fs = require('fs');
 
 class Photobox extends Station {
     constructor() {
         super();
+
+        this.logger = require('../logger').getInstance('Station'.cyan + ' Photobox'.yellow);
+        this.camera = require('../camera');
+        this.sharp = require('sharp');
+        this.api = require('../api');
+        this.modeService = require('../modeService');
+
         this.index = 0;
 
         this.settings = {
-            cropLeft: '33',
-            cropRight: '74',
-            cropTop: '23',
+            originalImageWidth: 3280,
+            originalImageHeight: 2464,
+            targetSize: 1000,
+            cropLeft: '31',
+            cropRight: '76',
+            cropTop: '27',
             cropBottom: '83',
             parseThresh: '245',
             parseReduction: '2'
@@ -29,109 +33,136 @@ class Photobox extends Station {
         this.pieceDir = __dirname + '/../../pieces/';
     }
 
-    getValidPieces() {
-        let comparePieces = [];
-        for (let i = 0; i < this.pieces.length; i++) {
-            if (this.pieces[i].valid) {
-                comparePieces.push({
-                    pieceIndex: this.pieces[i].pieceIndex,
-                    sides: this.pieces[i].sides
-                });
-            }
-        }
-        return comparePieces;
-    }
-
+    /**
+     * @param {Buffer} buffer
+     * @return {Promise<Buffer>}
+     */
     async cropImageBuffer(buffer) {
-        let left = Math.floor(this.settings.cropLeft / 100 * 3280);
-        let top = Math.floor(this.settings.cropTop / 100 * 2464);
-        let width = Math.floor((this.settings.cropRight - this.settings.cropLeft) / 100 * 3280);
-        let height = Math.floor((this.settings.cropBottom - this.settings.cropTop) / 100 * 2464);
+        let left = Math.floor(this.settings.cropLeft / 100 * this.settings.originalImageWidth);
+        let top = Math.floor(this.settings.cropTop / 100 * this.settings.originalImageHeight);
+        let width = Math.floor((this.settings.cropRight - this.settings.cropLeft) / 100 * this.settings.originalImageWidth);
+        let height = Math.floor((this.settings.cropBottom - this.settings.cropTop) / 100 * this.settings.originalImageHeight);
 
-        return await sharp(buffer).extract({
+        // noinspection JSUnresolvedFunction
+        return await this.sharp(buffer).extract({
             left: left,
             top: top,
             width: width,
             height: height
-        }).resize(Math.floor((width / height) * 1000), 1000).toBuffer();
+        }).resize(Math.floor((width / height) * this.settings.targetSize), this.settings.targetSize).toBuffer();
     }
 
-    compareReady() {
-        return new Promise(async (resolve) => {
-            if (this.isCompareReady) {
-                resolve();
-            } else if (this.isCompareRunning) {
-                let interval = setInterval(() => {
-                    if (this.isCompareReady) {
-                        clearInterval(interval);
-                        resolve();
-                    }
-                }, 100);
-            } else {
-                this.isCompareRunning = true;
-
-                this.piecePlacements = await api.call('getplacements', {pieces: this.getValidPieces()});
-                for (let group in this.piecePlacements) {
-                    if (!this.piecePlacements.hasOwnProperty(group)) continue;
-
-                    for (let x in this.piecePlacements[group]) {
-                        if (!this.piecePlacements[group].hasOwnProperty(x)) continue;
-
-                        for (let y in this.piecePlacements[group][x]) {
-                            if (!this.piecePlacements[group][x].hasOwnProperty(y)) continue;
-
-                            logger.debug(group, x, y, this.piecePlacements[group][x][y]);
-                        }
-                    }
+    /**
+     * @return {Promise<void>}
+     */
+    waitForCompareReady() {
+        return new Promise((resolve) => {
+            let interval = setInterval(() => {
+                if (this.isCompareReady) {
+                    clearInterval(interval);
+                    resolve();
                 }
-
-                this.isCompareReady = true;
-                resolve();
-            }
+            }, 100);
         });
     }
 
-    findPiecePosition(pieceIndex) {
-        for (let groupIndex in this.piecePlacements) {
-            if (!this.piecePlacements.hasOwnProperty(groupIndex)) continue;
-
-            for (let x in this.piecePlacements[groupIndex]) {
-                if (!this.piecePlacements[groupIndex].hasOwnProperty(x)) continue;
-
-                for (let y in this.piecePlacements[groupIndex][x]) {
-                    if (!this.piecePlacements[groupIndex][x].hasOwnProperty(y)) continue;
-
-                    if (this.piecePlacements[groupIndex][x][y].pieceIndex !== pieceIndex) continue;
-
-                    return {
-                        groupIndex: parseInt(groupIndex, 10),
-                        x: parseInt(x, 10),
-                        y: parseInt(y, 10),
-                        rotation: this.piecePlacements[groupIndex][x][y].rotation
-                    };
-                }
-            }
+    /**
+     * @return {Promise<void>}
+     */
+    async calculatePlacements() {
+        if (this.isCompareReady) {
+            return;
         }
 
-        return null;
+        if (this.isCompareRunning) {
+            await this.waitForCompareReady();
+            return;
+        }
+
+        this.isCompareRunning = true;
+
+        let piecePlacementsData = await this.api.call('getplacements', {pieces: this.getApiPiecesList(this.pieces)});
+
+        const Group = require('../models/Group');
+        this.groups = [];
+        for (let groupIndex in piecePlacementsData) {
+            if (!piecePlacementsData.hasOwnProperty(groupIndex)) continue;
+
+            let group = new Group();
+            group.groupIndex = parseInt(groupIndex, 10);
+
+            for (let x in piecePlacementsData[groupIndex]) {
+                if (!piecePlacementsData[groupIndex].hasOwnProperty(x)) continue;
+
+                group.fromX = Math.min(parseInt(x, 10), group.fromX);
+                group.toX = Math.max(parseInt(x, 10), group.toX);
+
+                for (let y in piecePlacementsData[groupIndex][x]) {
+                    if (!piecePlacementsData[groupIndex][x].hasOwnProperty(y)) continue;
+
+                    group.fromY = Math.min(parseInt(y, 10), group.fromY);
+                    group.toY = Math.max(parseInt(y, 10), group.toY);
+
+                    for (let i = 0; i < this.pieces.length; i++) {
+                        if (this.pieces[i].pieceIndex !== parseInt(piecePlacementsData[groupIndex][x][y]['pieceIndex'], 10)) continue;
+
+                        this.pieces[i].absolutePosition.x = parseInt(x, 10);
+                        this.pieces[i].absolutePosition.y = parseInt(y, 10);
+                        this.pieces[i].absolutePosition.group = group;
+                        this.pieces[i].absolutePosition.baseSide = piecePlacementsData[groupIndex][x][y]['rotation'];
+
+                        group.pieces.push(this.pieces[i]);
+
+                        this.logger.debug('Piece #' + this.pieces[i].pieceIndex + ' is in group ' + groupIndex + ' at ' + x + '/' + y + ' with baseSide = ' + this.pieces[i].absolutePosition.baseSide);
+
+                        break;
+                    }
+                }
+            }
+
+            this.logger.debug('Group ' + groupIndex + ' limits are: ' + group.fromX + '/' + group.toX + '/' + group.fromY + '/' + group.toY);
+
+            this.groups.push(group);
+        }
+
+        this.isCompareReady = true;
     }
 
-    loadPieces() {
-        if (this.piecesLoaded) return;
+    /**
+     * @param {string} filename
+     */
+    loadPiece(filename) {
+        const fs = require('fs');
+        let content = fs.readFileSync(this.pieceDir + filename, 'utf-8');
 
+        const Piece = require('../models/Piece');
+        let piece = new Piece();
+        piece.fillFromObject(JSON.parse(content));
+
+        this.pieces.push(piece);
+
+        this.index = Math.max(this.index, piece.pieceIndex + 1);
+    }
+
+    /**
+     * @return {Promise<void>}
+     */
+    loadPieces() {
         return new Promise((resolve, reject) => {
-            fs.readdir(this.pieceDir, (err, filenames) => {
+            if (this.piecesLoaded) {
+                resolve();
+                return;
+            }
+
+            const fs = require('fs');
+            fs.readdir(this.pieceDir, (err, fileNames) => {
                 if (err) {
                     reject(err);
                     return;
                 }
 
-                filenames.forEach((filename) => {
-                    let content = fs.readFileSync(this.pieceDir + filename, 'utf-8');
-                    let piece = JSON.parse(content);
-                    this.pieces.push(piece);
-
-                    this.index = Math.max(this.index, piece.pieceIndex + 1);
+                fileNames.forEach((filename) => {
+                    this.loadPiece(filename);
                 });
 
                 this.piecesLoaded = true;
@@ -141,109 +172,203 @@ class Photobox extends Station {
         });
     }
 
+    /**
+     * @param {int} index
+     * @return {string}
+     */
+    getImageFilename(index) {
+        return __dirname + '/../../images/piece' + index + '.jpg';
+    }
+
+    /**
+     * @param {int} index
+     * @return {Promise<Buffer>}
+     */
+    async takeImage(index) {
+        let filename = this.getImageFilename(index);
+
+        let imageBuffer = await this.camera.takeImage();
+        this.setReady();
+
+        imageBuffer = await this.cropImageBuffer(imageBuffer);
+        // noinspection JSUnresolvedFunction
+        await this.sharp(imageBuffer).toFile(filename);
+
+        return imageBuffer;
+    }
+
+    /**
+     *
+     * @param {int} index
+     * @param {Buffer} imageBuffer
+     * @return {Promise<object>}
+     */
+    async parseImage(index, imageBuffer) {
+        let pieceData = await this.api.call('parseimage', {
+            imageData: imageBuffer.toString('base64'),
+            pieceIndex: index,
+            threshold: parseInt(this.settings.parseThresh, 10),
+            reduction: parseInt(this.settings.parseReduction, 10)
+        });
+
+        if (typeof pieceData['errorMessage'] !== 'undefined') {
+            throw new Error(pieceData['errorMessage']);
+        }
+
+        return pieceData;
+    }
+
+    /**
+     * @param {Plate} plate
+     * @param {Error} error
+     */
+    handleError(plate, error) {
+        if (error.toString() === 'No areas found') {
+            plate.setData('empty', true);
+        } else {
+            this.logger.error('Error: ' + error);
+        }
+
+        plate.setData('valid', false);
+        plate.setData('error', error.toString());
+        plate.setReady();
+    }
+
+    /**
+     * @param {int} index
+     * @param {object} pieceData
+     * @return {Piece}
+     */
+    createPiece(index, pieceData) {
+        const Piece = require('../models/Piece');
+        let piece = new Piece();
+        piece.fillFromObject(pieceData);
+        piece.pieceIndex = index;
+
+        const path = require("path");
+        piece.files.original = path.basename(this.getImageFilename(index));
+
+        return piece;
+    }
+
+    /**
+     * @return {Promise<Piece>}
+     */
+    async getPieceFromCamera() {
+        let currentIndex = this.index++;
+
+        let imageBuffer = await this.takeImage(currentIndex);
+        let pieceData = await this.parseImage(currentIndex, imageBuffer);
+
+        return this.createPiece(currentIndex, pieceData);
+    }
+
+    /**
+     * @param {Plate} plate
+     * @param {Piece} piece
+     * @return {Promise<void>}
+     */
+    async handleScanMode(plate, piece) {
+        this.pieces.push(piece);
+
+        const fs = require('fs');
+        fs.writeFileSync(this.pieceDir + piece.pieceIndex, JSON.stringify(piece));
+
+        this.logger.info('scan complete.');
+        plate.setData('piece', piece);
+        plate.setData('valid', true);
+        plate.setReady();
+    }
+
+    /**
+     * @param {Piece[]} pieces
+     * @return {{pieceIndex: int, sides: Object[]}[]}
+     */
+    getApiPiecesList(pieces) {
+        let apiPieces = [];
+        for (let i = 0; i < pieces.length; i++) {
+            apiPieces.push(this.getApiPiece(pieces[i]));
+        }
+        return apiPieces;
+    }
+
+    /**
+     * @param {Piece} piece
+     * @return {{pieceIndex: int, sides: Object[]}}
+     */
+    getApiPiece(piece) {
+        return {
+            pieceIndex: piece.pieceIndex,
+            sides: piece.sides
+        };
+    }
+
+    /**
+     * @param {Plate} plate
+     * @param {Piece} piece
+     * @return {Promise<void>}
+     */
+    async handleCompareMode(plate, piece) {
+        this.logger.debug('before calculate placements');
+        await this.calculatePlacements();
+        this.logger.debug('after calculate placements');
+
+        let foundPieceInfo = await this.api.call('findexistingpieceindex', {
+            pieces: this.getApiPiecesList(this.pieces),
+            piece: this.getApiPiece(piece)
+        });
+        this.logger.debug('after api call');
+
+        if (foundPieceInfo === null) {
+            // noinspection ExceptionCaughtLocallyJS
+            throw new Error('Couldn\'t match this piece with an existing piece.');
+        }
+
+        let existingPiece = null;
+        for (let i = 0; i < this.pieces.length; i++) {
+            if (this.pieces[i].pieceIndex === parseInt(foundPieceInfo['pieceIndex'], 10)) {
+                existingPiece = this.pieces[i];
+                break;
+            }
+        }
+        existingPiece.sides = piece.sides;
+        this.logger.debug('after existing piece');
+
+        if (foundPieceInfo === null) {
+            // noinspection ExceptionCaughtLocallyJS
+            throw new Error('Matched piece not found in existing pieces. Straaaange...');
+        }
+
+        this.logger.info('compare complete.', existingPiece.absolutePosition);
+        plate.setData('valid', true);
+        plate.setData('piece', existingPiece);
+        plate.setData('sideOffset', foundPieceInfo['sideOffset']);
+        plate.setData('groups', this.groups);
+        plate.setReady();
+    }
+
+    /**
+     * @param {Plate} plate
+     * @return {Promise<void>}
+     */
     async execute(plate) {
         if (!this.piecesLoaded) {
             await this.loadPieces();
         }
 
-        logger.notice('Executing...');
+        this.logger.notice('Executing...');
         plate.setNotReady();
 
         try {
-            let currentIndex = this.index++;
-            let filename = __dirname + '/../../images/piece' + currentIndex + '.jpg';
+            let piece = await this.getPieceFromCamera();
 
-            let imageBuffer = await camera.takeImage();
-            this.setReady();
-
-            imageBuffer = await this.cropImageBuffer(imageBuffer);
-            await sharp(imageBuffer).toFile(filename);
-
-            let piece = await api.call('parseimage', {
-                imageData: imageBuffer.toString('base64'),
-                pieceIndex: currentIndex,
-                threshold: parseInt(this.settings.parseThresh, 10),
-                reduction: parseInt(this.settings.parseReduction, 10)
-            });
-
-            if (typeof piece.errorMessage !== 'undefined') {
-                if (piece.errorMessage === 'No areas found') {
-                    logger.debug('Empty');
-                    plate.setData('valid', false);
-                    plate.setData('empty', true);
-                    plate.setData('error', 'empty');
-                    plate.setReady();
-
-                    return;
-                }
-
-                logger.error('Error: ' + piece.errorMessage);
-                plate.setData('valid', false);
-                plate.setData('error', piece.errorMessage);
-                plate.setReady();
-
-                return;
-            }
-
-            if (mode.getMode() === 'scan') {
-                piece.valid = true;
-                piece.pieceIndex = currentIndex;
-                piece.files = {
-                    original: path.basename(filename)
-                };
-                this.pieces.push(piece);
-
-                fs.writeFile(this.pieceDir + currentIndex, JSON.stringify(piece));
-
-                logger.info('scan complete.');
-                plate.setData('piece', piece);
-                plate.setData('valid', true);
-                plate.setReady();
-
-                return;
-            }
-
-            if (mode.getMode() === 'compare') {
-                await this.compareReady();
-
-                let foundPieceInfo = await api.call('findexistingpieceindex', {
-                    pieces: this.getValidPieces(),
-                    piece: piece
-                });
-
-                if (foundPieceInfo === null) {
-                    logger.error('compare error: ' + 'Couldn\'t match this piece with an existing piece.');
-                    plate.setData('valid', false);
-                    plate.setData('error', 'Couldn\'t match this piece with an existing piece.');
-                    plate.setReady();
-
-                    return;
-                }
-
-                let position = this.findPiecePosition(foundPieceInfo.pieceIndex);
-
-                if (position === null) {
-                    logger.error('compare error: ' + 'Something unexpected happened.. couldn\'t find the matching piece in the placement list :(');
-                    plate.setData('valid', false);
-                    plate.setData('error', 'Something unexpected happened.. couldn\'t find the matching piece in the placement list :(');
-                    plate.setReady();
-
-                    return;
-                }
-
-                logger.info('compare complete.', position);
-                plate.setData('valid', true);
-                plate.setData('piece', piece);
-                plate.setData('position', position);
-                plate.setData('sideOffset', foundPieceInfo.sideOffset);
-                plate.setData('piecePlacements', this.piecePlacements);
-                plate.setReady();
+            if (this.modeService.getMode() === 'scan') {
+                await this.handleScanMode(plate, piece);
+            } else if (this.modeService.getMode() === 'compare') {
+                await this.handleCompareMode(plate, piece);
             }
         } catch (err) {
-            logger.error('execution error: ', err, err.stack);
-            plate.setData('valid', false);
-            plate.setData('error', err.toString());
-            plate.setReady();
+            this.handleError(plate, err);
         }
     }
 }

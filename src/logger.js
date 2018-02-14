@@ -31,6 +31,12 @@ function Logger() {
 
     let currentLevel = 5;
 
+    /**
+     * @param title
+     * @param color
+     *
+     * @returns {{debug: function, notice: function, info: function, warning: function, error: function}}
+     */
     this.getInstance = (title, color) => {
         if (!color) {
             color = colors.white;

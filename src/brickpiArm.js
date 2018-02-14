@@ -1,42 +1,47 @@
-const brickpi3 = require('brickpi3');
-
-const colors = require('colors');
-const logger = require('./logger').getInstance('BrickPi (arm)'.red);
+require('colors');
 
 function BrickPiArm() {
+    this.logger = require('./logger').getInstance('BrickPi (arm)'.red);
+
+    this.brickPi = require('brickpi3');
+    this.brickPiHelper = require('./brickPiHelper');
+
     this.isInitialized = false;
     this.conveyorPosition = 0;
 
-    this.plateXMotorDockPosition = 1200;
+    this.collectConveyorCenter = 544; //ArmX has to go to this position, so it is exactly in the middle over the conveyor
+    this.collectBottom = -217;  //ArmY has to go down to this position to "press" the piece
+    this.collectToPlatform = 866; //ArmX has to move to this position, so the piece is pulled onto the moving platform
 
     this.cmPerTeeth = 3.2 / 10; //https://www.brickowl.com/catalog/lego-gear-rack-4-3743
-    this.cmPerRotation = this.cmPerTeeth * 36; //https://www.brickowl.com/catalog/lego-double-bevel-gear-with-12-teeth-32270
+    this.cmPerRotation = this.cmPerTeeth * 36; //https://www.brickowl.com/catalog/lego-double-bevel-gear-with-36-teeth-32498
 
+    /**
+     * @return {Promise<void>}
+     */
     this.init = async () => {
         if (this.isInitialized) return;
 
-        await brickpi3.set_address(1, 'A778704A514D355934202020FF110722');
-        await brickpi3.set_address(2, 'DF9E6AC3514D355934202020FF112718');
+        await this.brickPi.set_address(1, 'A778704A514D355934202020FF110722');
+        await this.brickPi.set_address(2, 'DF9E6AC3514D355934202020FF112718');
 
-        this.BP = new brickpi3.BrickPi3(1);
+        this.BP = new this.brickPi.BrickPi3(1);
 
-        brickpi3.utils.resetAllWhenFinished(this.BP);
+        this.brickPi.utils.resetAllWhenFinished(this.BP);
 
-        this.plateXSensor = brickpi3.utils.getSensor(this.BP, this.BP.PORT_3);
-        await this.plateXSensor.setType(this.plateXSensor.BP.SENSOR_TYPE.EV3_TOUCH);
-        this.plateXMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_C);
-
-        this.armXSensor = brickpi3.utils.getSensor(this.BP, this.BP.PORT_1);
-        await this.armXSensor.setType(this.armXSensor.BP.SENSOR_TYPE.EV3_TOUCH);
-        this.armXMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_A);
-
-        this.armYMotor = brickpi3.utils.getMotor(this.BP, this.BP.PORT_D);
-
-        this.armToPlateRatio = Math.abs(new brickpi3.utils.Gear(24).drive(12).getFactor());
+        // noinspection JSUnresolvedFunction
+        this.plateXMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_B);
+        // noinspection JSUnresolvedFunction
+        this.armXMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_A);
+        // noinspection JSUnresolvedFunction
+        this.armYMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_D);
 
         this.isInitialized = true;
     };
 
+    /**
+     * @return {Promise<void>}
+     */
     this.resetMotors = async () => {
         if (!this.isInitialized) {
             await this.init();
@@ -46,76 +51,123 @@ function BrickPiArm() {
         await Promise.all([this._resetPlateX(), this._resetArmX()]);
     };
 
+    /**
+     * @return {Promise<void>}
+     * @private
+     */
     this._resetArmY = async () => {
-        await brickpi3.utils.resetMotorEncoder(this.armYMotor.BP, this.armYMotor.port, brickpi3.utils.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 10, 10000, 30);
+        await this.brickPiHelper.resetMotorEncoder(this.armYMotor.BP, this.armYMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.FORWARD_LIMIT, 0, 10, 10000, 30);
     };
 
+    /**
+     * @return {Promise<void>}
+     * @private
+     */
     this._resetArmX = async () => {
-        let initialSensorState = await this.armXSensor.getValue();
-
-        if (!initialSensorState) {
-            await this.armXMotor.setPower(50, async () => {
-                return await this.armXSensor.getValue() === 1;
-            });
-        }
-        await this.armXMotor.setEncoder(await this.armXMotor.getEncoder());
+        await this.brickPiHelper.resetMotorEncoder(this.armXMotor.BP, this.armXMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 1, 10000, 60);
     };
 
+    /**
+     * @return {Promise<void>}
+     * @private
+     */
     this._resetPlateX = async () => {
-        let initialSensorState = await this.plateXSensor.getValue();
-
-        if (!initialSensorState) {
-            await this.plateXMotor.setPower(50, async () => {
-                return await this.plateXSensor.getValue() === 1;
-            });
-        }
-        await this.plateXMotor.setEncoder(await this.plateXMotor.getEncoder());
+        await this.brickPiHelper.resetMotorEncoder(this.plateXMotor.BP, this.plateXMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.FORWARD_LIMIT, 0, 1, 10000, 60);
     };
 
+    /**
+     * @param {int} offset
+     * @return {Promise<void>}
+     */
     this.collect = async (offset) => {
         if (!this.isInitialized) {
             await this.init();
         }
 
-        offset = Math.max(-100, Math.min(100, offset));
+        await Promise.all([
+            this.plateXMotor.setPosition(0, 100),
+            this.armXMotor.setPosition(this.collectConveyorCenter + offset * 80, 100)
+        ]);
 
-        await this.plateXMotor.setPosition(-this.plateXMotorDockPosition, 100);
-        await this.armXMotor.setPosition(-444 + offset, 100);
-        await this.armYMotor.setPosition(275, 70);
-        await this.armXMotor.setPosition(0, 70);
-        await this.plateXMotor.setPosition(-this.plateXMotorDockPosition + 33, 100);
+        await this.armYMotor.setPosition(this.collectBottom, 70);
     };
 
+    /**
+     * @return {Promise<void>}
+     */
+    this.moveToPlatform = async () => {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+
+        await Promise.all([
+            this.armXMotor.setPosition(this.collectToPlatform, 70),
+            this.armYMotor.setPosition(this.collectBottom - 30, 70)
+        ]);
+        await this.armYMotor.setPosition(this.collectBottom - 70);
+    };
+
+    /**
+     * @return {Promise<void>}
+     */
+    this.moveToTrash = async () => {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+
+        await this.armXMotor.setPosition(227, 70);
+        await Promise.all([
+           this.armXMotor.setPosition(0, 70),
+           this.armYMotor.setPosition(-345, 70)
+        ]);
+        await this.armYMotor.setPosition(0, 70);
+    };
+
+    /**
+     * @param {number} x
+     * @return {Promise<void>}
+     */
     this.moveTo = async (x) => {
         if (!this.isInitialized) {
             await this.init();
         }
 
-        let targetPlateXMotorPosition = this.plateXMotorDockPosition - (360 * x / this.cmPerRotation);
-        if (targetPlateXMotorPosition < 300 * this.armToPlateRatio) {
-            targetPlateXMotorPosition = 300 * this.armToPlateRatio;
+        let sizeCmTo = 44;
+        let sizeCmFrom = 7;
+        if (x > sizeCmTo - sizeCmFrom) {
+            throw new Error('Board is only ' + (sizeCmTo - sizeCmFrom) + 'cm long. Please specify a value below or equal ' + (sizeCmTo - sizeCmFrom) + 'cm.');
         }
-        await this.plateXMotor.setPosition(-targetPlateXMotorPosition, 100);
+        if (x < 0) {
+            throw new Error('Board x position must be at least at 0cm. Got ' + x + 'cm.');
+        }
+
+        let xOffset = (360 * (x + sizeCmFrom) / this.cmPerRotation);
+        await Promise.all([
+            this.plateXMotor.setPosition(-xOffset, 100),
+            this.armXMotor.setPosition(this.collectToPlatform + xOffset, 100),
+        ]);
     };
 
+    /**
+     * @return {Promise<void>}
+     */
     this.place = async () => {
-        logger.debug("place method");
         if (!this.isInitialized) {
-            logger.debug("must init");
             await this.init();
         }
 
-        logger.debug("0");
-        let plateXPosition = await this.plateXMotor.getEncoder();
-        logger.debug("a");
+        let additionalOffset = (360 * 7/*cm*/ / this.cmPerRotation); //5cm to move the puzzle from the platform
+        let currentEncoder = await this.plateXMotor.getEncoder();
+
+        this.logger.debug('Current encoder: ' + currentEncoder + ', additionalOffset: ' + additionalOffset + ', result: ' + (currentEncoder - additionalOffset));
+
         await Promise.all([
-            this.armXMotor.setPosition(-300, 70),
-            this.plateXMotor.setPosition(plateXPosition + 100 * this.armToPlateRatio, 70 * this.armToPlateRatio),
-            this.armYMotor.setPosition(275, 70)]
-        );
-        logger.debug("b");
-        await this.armYMotor.setPosition(0, 100);
-        logger.debug("c");
+            this.plateXMotor.setPosition(currentEncoder - additionalOffset, 100),
+            this.armYMotor.setPosition(-300, 70)
+        ]);
+
+
+        await this.armYMotor.setPosition(0, 70);
     };
 }
 

@@ -1,8 +1,9 @@
+require('colors');
+
 const net = require('net');
 const JsonSocket = require('json-socket');
 const brickPi = require('./src/brickpiArm');
 
-const colors = require('colors');
 const logger = require('./src/logger').getInstance('Main'.green);
 
 const port = 1201;
@@ -13,40 +14,51 @@ server.on('connection', (socket) => {
     logger.notice('New client connected');
     socket = new JsonSocket(socket);
 
+    // noinspection JSUnresolvedFunction
     socket.on('message', async (message) => {
         logger.notice('got message', message);
         switch (message.command) {
             case 'reset':
                 await brickPi.resetMotors();
                 break;
+
             case 'collect':
-                logger.debug("collect start");
                 await brickPi.collect(message.data.offset);
-                logger.debug("collect end");
                 break;
+
+            case 'moveToPlatform':
+                await brickPi.moveToPlatform();
+                break;
+
+            case 'moveToTrash':
+                await brickPi.moveToTrash();
+                break;
+
             case 'moveTo':
-                logger.debug("moveTo start");
                 await brickPi.moveTo(message.data.x);
-                logger.debug("moveTo end");
                 break;
+
             case 'place':
-                logger.debug("place start");
                 await brickPi.place();
-                logger.debug("place end");
                 break;
+
             default:
+                // noinspection JSUnresolvedFunction
                 socket.sendMessage({index: message.index, success: false});
                 return;
         }
 
         logger.notice(message.index + ": done");
+        // noinspection JSUnresolvedFunction
         socket.sendMessage({index: message.index, success: true});
     });
 
+    // noinspection JSUnresolvedFunction
     socket.on('error', () => {
         logger.error('Error with client.');
     });
 
+    // noinspection JSUnresolvedFunction
     socket.on('close', () => {
         logger.info('Client closed connection');
     });

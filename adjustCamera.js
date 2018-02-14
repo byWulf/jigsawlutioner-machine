@@ -35,7 +35,7 @@ async function initBricks() {
 
     brickpi3.utils.resetAllWhenFinished(BrickPi);
 
-    conveyorMotor = brickpi3.utils.getMotor(BrickPi, BrickPi.PORT_C);
+    conveyorMotor = brickpi3.utils.getMotor(BrickPi, BrickPi.PORT_A);
     conveyorSensor = {pin: 3};
 
     rpio.open(conveyorSensor.pin, rpio.INPUT, rpio.PULL_DOWN);
