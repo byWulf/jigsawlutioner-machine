@@ -6,6 +6,7 @@ const armClient = require('./src/armClient');
 const mode = require('./src/modeService');
 
 const logger = require('./src/logger').getInstance('Main'.green);
+logger.setGlobalLevel(logger.LEVEL_WARNING);
 
 (async () => {
     await brickPi.init();

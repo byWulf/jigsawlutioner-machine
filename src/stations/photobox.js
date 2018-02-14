@@ -223,7 +223,7 @@ class Photobox extends Station {
      * @param {Error} error
      */
     handleError(plate, error) {
-        if (error.toString() === 'No areas found') {
+        if (error.toString() === 'Error: No areas found') {
             plate.setData('empty', true);
         } else {
             this.logger.error('Error: ' + error);
@@ -346,6 +346,7 @@ class Photobox extends Station {
             }
         }
         existingPiece.sides = piece.sides;
+        existingPiece.boundingBox = piece.boundingBox;
         this.logger.debug('after existing piece');
 
         if (foundPieceInfo === null) {

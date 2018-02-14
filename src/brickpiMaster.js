@@ -180,9 +180,10 @@ function BrickPiMaster() {
 
     /**
      * @param {number} x
+     * @param {number} offset
      * @return {Promise<void>}
      */
-    this.prepareBoard = async (x) => {
+    this.prepareBoard = async (x, offset) => {
         if (!this.isInitialized) {
             await this.init();
         }
@@ -200,8 +201,9 @@ function BrickPiMaster() {
         const cmPerRotation = cmPerTeeth * 20; //https://www.brickowl.com/catalog/lego-double-bevel-gear-with-20-teeth-unreinforced-32269
         let targetMotorPosition = 360 * x / cmPerRotation;
         let maxMotorPosition = 360 * sizeCm / cmPerRotation;
+        let offsetPosition = 360 * offset * (6/*cm of plate width*/ / 2) / cmPerRotation;
 
-        await Promise.all([this.plateZMotor.setPosition(maxMotorPosition - targetMotorPosition, 100)]);
+        await Promise.all([this.plateZMotor.setPosition(maxMotorPosition - targetMotorPosition + offsetPosition, 100)]);
     };
 
     /**

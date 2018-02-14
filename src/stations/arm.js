@@ -7,6 +7,7 @@ class Arm extends Station {
         super();
 
         this.logger = require('../logger').getInstance('Station'.cyan + ' Arm'.magenta);
+        this.logger.setLevel(this.logger.LEVEL_DEBUG);
         this.modeService = require('../modeService');
         this.armClient = require('../armClient');
         this.brickPiMaster = require('../brickpiMaster');
@@ -15,7 +16,7 @@ class Arm extends Station {
 
         this.groupsOrdered = false;
 
-        this.pieceDistance = 3;
+        this.pieceDistance = 3;//1.9;
         this.tileWidth = Math.floor(30/*cm on z-axis*/ / this.pieceDistance);
         this.tileHeight = Math.floor(25/*cm on x-axis*/ / this.pieceDistance);
     }
@@ -67,12 +68,25 @@ class Arm extends Station {
      * @return {number}
      */
     getArmOffset(piece) {
-        this.logger.debug('Position of piece', piece);
-        let center = piece.boundingBox.top + (piece.boundingBox.bottom - piece.boundingBox.top) / 2;
-        let armOffset = (center - 495) / 495;
+        this.logger.debug('Position of piece', piece.boundingBox);
+        let armOffset = (piece.boundingBox.getCenterY() - 500) / 500;
         this.logger.debug('arm offset: ', armOffset);
 
         return armOffset;
+    }
+
+    /**
+     * Calculates the z offset of the piece on the board.
+     *
+     * @param {Piece} piece
+     * @return {number}
+     */
+    getBoardOffset(piece) {
+        this.logger.debug('Position of piece', piece.boundingBox);
+        let boardOffset = (piece.boundingBox.getCenterX() - 500) / 500;
+        this.logger.debug('board offset: ', boardOffset);
+
+        return -boardOffset;
     }
 
     /**
@@ -192,7 +206,7 @@ class Arm extends Station {
 
         await Promise.all([
             this.armClient.moveTo(boardPosition.y * this.pieceDistance),
-            this.brickPiMaster.prepareBoard(boardPosition.x * this.pieceDistance)
+            this.brickPiMaster.prepareBoard(boardPosition.x * this.pieceDistance, this.getBoardOffset(piece))
         ]);
         this.logger.debug("moved");
 

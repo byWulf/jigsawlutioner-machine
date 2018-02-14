@@ -29,6 +29,14 @@ function BoundingBox() {
         this.left = object.left ? parseInt(object.left, 10) : 0;
         this.right = object.right ? parseInt(object.right, 10) : 0;
     };
+
+    this.getCenterX = () => {
+        return this.left + (this.right - this.left) / 2;
+    };
+
+    this.getCenterY = () => {
+        return this.top + (this.bottom - this.top) / 2;
+    };
 }
 
 module.exports = BoundingBox;

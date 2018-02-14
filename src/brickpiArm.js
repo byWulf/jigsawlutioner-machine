@@ -86,7 +86,7 @@ function BrickPiArm() {
 
         await Promise.all([
             this.plateXMotor.setPosition(0, 100),
-            this.armXMotor.setPosition(this.collectConveyorCenter + offset * 80, 100)
+            this.armXMotor.setPosition(this.collectConveyorCenter + 360 * offset * (6/*cm plate height*/ / 2) / this.cmPerRotation, 100)
         ]);
 
         await this.armYMotor.setPosition(this.collectBottom, 70);
