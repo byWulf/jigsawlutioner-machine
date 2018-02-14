@@ -12,43 +12,50 @@ function getFormattedDate() {
     return str;
 }
 
+const LEVEL_DEBUG = 5;
+const LEVEL_NOTICE = 4;
+const LEVEL_INFO = 3;
+const LEVEL_WARNING = 2;
+const LEVEL_ERROR = 1;
+
 function Logger() {
-    const inst = this;
-
-    this.LEVEL_DEBUG = 5;
-    this.LEVEL_NOTICE = 4;
-    this.LEVEL_INFO = 3;
-    this.LEVEL_WARNING = 2;
-    this.LEVEL_ERROR = 1;
-
     let levelColors = {
-        5: colors.gray,
-        4: colors.white,
-        3: colors.cyan,
-        2: colors.yellow,
-        1: colors.red
+        5: colors['gray'],
+        4: colors['white'],
+        3: colors['cyan'],
+        2: colors['yellow'],
+        1: colors['red']
     };
 
-    let currentLevel = 5;
+    let globalLevel = 5;
 
     /**
      * @param title
      * @param color
      *
-     * @returns {{debug: function, notice: function, info: function, warning: function, error: function}}
+     * @returns {{debug: function, notice: function, info: function, warning: function, error: function, setLevel: function, setGlobalLevel: function, LEVEL_DEBUG: int, LEVEL_NOTICE: int, LEVEL_INFO: int, LEVEL_WARNING: int, LEVEL_ERROR: int}}
      */
     this.getInstance = (title, color) => {
         if (!color) {
-            color = colors.white;
+            color = colors['white'];
         }
 
         return new function() {
+            this.LEVEL_DEBUG = LEVEL_DEBUG;
+            this.LEVEL_NOTICE = LEVEL_NOTICE;
+            this.LEVEL_INFO = LEVEL_INFO;
+            this.LEVEL_WARNING = LEVEL_WARNING;
+            this.LEVEL_ERROR = LEVEL_ERROR;
+
+            let maxLevel = null;
+
             const log = (level, data) => {
-                if (level > currentLevel) return;
+                if (maxLevel !== null ? level > maxLevel : level > globalLevel) return;
                 if (typeof data === 'object') {
                     data = Object.keys(data).map(key => data[key]);
                 }
 
+                // noinspection JSUnresolvedFunction
                 data.unshift(
                     levelColors[level]('[' + getFormattedDate() + '] ') +
                     (title ? color.underline(title) + color(':') + ' ' : '') +
@@ -58,16 +65,19 @@ function Logger() {
                 console.log.apply(this, data);
             };
 
-            this.debug = function() { log(inst.LEVEL_DEBUG, arguments); };
-            this.notice = function() { log(inst.LEVEL_NOTICE, arguments); };
-            this.info = function() { log(inst.LEVEL_INFO, arguments); };
-            this.warning = function() { log(inst.LEVEL_WARNING, arguments); };
-            this.error = function() { log(inst.LEVEL_ERROR, arguments); };
-        };
-    };
+            this.debug = function() { log(LEVEL_DEBUG, arguments); };
+            this.notice = function() { log(LEVEL_NOTICE, arguments); };
+            this.info = function() { log(LEVEL_INFO, arguments); };
+            this.warning = function() { log(LEVEL_WARNING, arguments); };
+            this.error = function() { log(LEVEL_ERROR, arguments); };
 
-    this.setLevel = (level) => {
-        currentLevel = level;
+            this.setLevel = (level) => {
+                maxLevel = level;
+            };
+            this.setGlobalLevel = (level) => {
+                globalLevel = level;
+            };
+        };
     };
 }
 
