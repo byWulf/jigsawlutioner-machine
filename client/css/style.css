@@ -45,3 +45,6 @@ h1.headline {
     right: 10px;
     bottom: 10px;
 }
+.width-100 {
+    width: 100%;
+}

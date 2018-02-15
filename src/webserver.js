@@ -11,6 +11,7 @@ class Webserver {
 
         this.events = require('./events');
         this.conveyor = require('./conveyor');
+        this.modeService = require('./modeService');
     }
 
     start() {
@@ -36,14 +37,16 @@ class Webserver {
             this.logger.debug('New connection ' + socket.id);
 
             this.registerClientConveyorEvents(socket);
+            this.registerClientModeEvents(socket);
         });
 
         this.registerConveyorEvents();
+        this.registerModeEvents();
 
         this.started = true;
     }
 
-    registerConveyorEvents(socket) {
+    registerConveyorEvents() {
         this.events.listen('conveyorStarted', () => {
             this.conveyorState = 'running';
 
@@ -72,6 +75,22 @@ class Webserver {
 
         socket.on('stopConveyor', () => {
             this.conveyor.stop();
+        });
+    }
+
+    registerModeEvents() {
+        this.events.listen('modeSwitched', (mode) => {
+            this.mode = mode;
+
+            this.io.emit('modeSwitched', this.mode);
+        });
+    }
+
+    registerClientModeEvents(socket) {
+        socket.emit('modeSwitched', this.mode || this.modeService.MODE_SCAN);
+
+        socket.on('switchMode', (mode) => {
+            this.modeService.switchMode(mode);
         });
     }
 }

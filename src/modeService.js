@@ -1,5 +1,6 @@
 const logger = require('./logger').getInstance('Mode'.blue);
 logger.setLevel(logger.LEVEL_INFO);
+const events = require('./events');
 
 
 function ModeService() {
@@ -13,6 +14,8 @@ function ModeService() {
         logger.info('=========================');
         logger.info('== Switched to mode ' + mode);
         logger.info('=========================');
+
+        events.dispatch('modeSwitched', mode);
     };
     this.getMode = () => {
         return this.mode;
