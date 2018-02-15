@@ -12,6 +12,7 @@ class Photobox extends Station {
         this.api = require('../api');
         this.modeService = require('../modeService');
         this.projectManager = require('../projectManager');
+        this.events = require('../events');
 
         this.index = 0;
 
@@ -33,6 +34,31 @@ class Photobox extends Station {
         this.piecesLoaded = false;
         this.pieceDir = 'pieces/';
         this.imagesDir = 'images/';
+
+        this.events.listen('projectSelected', async () => {
+            this.createNeededDirs();
+
+            this.piecesLoaded = false;
+            await this.loadPieces();
+        });
+
+        this.createNeededDirs();
+    }
+
+    /**
+     *
+     */
+    createNeededDirs() {
+        if (this.projectManager.getCurrentProjectName() === null) return;
+
+        const fs = require('fs');
+        if (!fs.existsSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir)) {
+            fs.mkdirSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir);
+        }
+
+        if (!fs.existsSync(this.projectManager.getCurrentProjectFolder() + this.imagesDir)) {
+            fs.mkdirSync(this.projectManager.getCurrentProjectFolder() + this.imagesDir);
+        }
     }
 
     /**

@@ -19,7 +19,7 @@ class ProjectManager {
             this.createProject('Default');
             this.selectProject('Default');
         } else {
-            this.selectProject(this.fs.readFileSync(this.folder + this.lastProjectFile));
+            this.selectProject(this.fs.readFileSync(this.folder + this.lastProjectFile, 'utf-8'));
         }
     }
 
@@ -87,7 +87,7 @@ class ProjectManager {
     }
 
     getCurrentProjectFolder() {
-        return this.folder + this.currentProject;
+        return this.folder + this.currentProject + '/';
     }
 
     getCurrentProjectName() {

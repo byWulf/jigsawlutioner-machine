@@ -12,6 +12,7 @@ class Webserver {
         this.events = require('./events');
         this.conveyor = require('./conveyor');
         this.modeService = require('./modeService');
+        this.projectManager = require('./projectManager');
     }
 
     start() {
@@ -38,10 +39,12 @@ class Webserver {
 
             this.registerClientConveyorEvents(socket);
             this.registerClientModeEvents(socket);
+            this.registerClientProjectManagerEvents(socket);
         });
 
         this.registerConveyorEvents();
         this.registerModeEvents();
+        this.registerProjectManagerEvents();
 
         this.started = true;
     }
@@ -92,6 +95,18 @@ class Webserver {
         socket.on('switchMode', (mode) => {
             this.modeService.switchMode(mode);
         });
+    }
+
+    registerProjectManagerEvents() {
+        this.events.listen('projectSelected', (projectName) => {
+            this.projectName = projectName;
+
+            this.io.emit('projectSelected', this.projectName);
+        });
+    }
+
+    registerClientProjectManagerEvents(socket) {
+        socket.emit('projectSelected', this.projectName || '');
     }
 }
 

@@ -11,6 +11,7 @@ class Arm extends Station {
         this.modeService = require('../modeService');
         this.armClient = require('../armClient');
         this.brickPiMaster = require('../brickpiMaster');
+        this.events = require('../events');
 
         this.armFinished = true;
 
@@ -19,6 +20,10 @@ class Arm extends Station {
         this.pieceDistance = 3;//1.9;
         this.tileWidth = Math.floor(30/*cm on z-axis*/ / this.pieceDistance);
         this.tileHeight = Math.floor(25/*cm on x-axis*/ / this.pieceDistance);
+
+        this.events.listen('projectSelected', async () => {
+            this.groupsOrdered = false;
+        });
     }
 
     /**

@@ -5,3 +5,6 @@ conveyor.addEventListeners();
 
 let modeService = new ModeService(socket);
 modeService.addEventListeners();
+
+let projectManager = new ProjectManager(socket);
+projectManager.addEventListeners();
