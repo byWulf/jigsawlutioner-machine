@@ -4,11 +4,14 @@ const Conveyor = require('./src/conveyor');
 const brickPi = require('./src/brickpiMaster');
 const armClient = require('./src/armClient');
 const mode = require('./src/modeService');
+const webserver = require('./src/webserver');
 
 const logger = require('./src/logger').getInstance('Main'.green);
 logger.setGlobalLevel(logger.LEVEL_WARNING);
 
 (async () => {
+    webserver.start();
+
     await brickPi.init();
 
     brickPi.onModeSwitch(() => {
