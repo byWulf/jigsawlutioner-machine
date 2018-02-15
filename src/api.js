@@ -1,5 +1,4 @@
 const rp = require('request-promise');
-const fs = require('fs');
 
 /**
  * @param {string} resource
@@ -7,8 +6,6 @@ const fs = require('fs');
  * @return {Promise<*>}
  */
 module.exports.call = function(resource, postData) {
-    if (resource === 'getplacements') fs.writeFileSync(__dirname + '/../getplacements.json',JSON.stringify(postData));
-
     return rp({
         method: 'POST',
         uri: 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/jigsawlutioner/' + resource,
