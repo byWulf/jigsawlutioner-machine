@@ -322,7 +322,7 @@ class Photobox extends Station {
      * @param {Piece} piece
      * @return {Promise<void>}
      */
-    async handleCompareMode(plate, piece) {
+    async handlePlaceMode(plate, piece) {
         this.logger.debug('before calculate placements');
         await this.calculatePlacements();
         this.logger.debug('after calculate placements');
@@ -377,10 +377,10 @@ class Photobox extends Station {
         try {
             let piece = await this.getPieceFromCamera();
 
-            if (this.modeService.getMode() === 'scan') {
+            if (this.modeService.getMode() === this.modeService.MODE_SCAN) {
                 await this.handleScanMode(plate, piece);
-            } else if (this.modeService.getMode() === 'compare') {
-                await this.handleCompareMode(plate, piece);
+            } else if (this.modeService.getMode() === this.modeService.MODE_PLACE) {
+                await this.handlePlaceMode(plate, piece);
             }
         } catch (err) {
             this.handleError(plate, err);

@@ -263,9 +263,9 @@ class Arm extends Station {
             return;
         }
 
-        if (this.modeService.getMode() === 'scan') {
+        if (this.modeService.getMode() === this.modeService.MODE_SCAN) {
             await this.movePieceToBox(data['piece'], 0);
-        } else if (this.modeService.getMode() === 'compare') {
+        } else if (this.modeService.getMode() === this.modeService.MODE_PLACE) {
             await this.placePiece(data['groups'], data['piece']);
         } else {
             throw new Error('Invalid mode');

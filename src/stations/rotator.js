@@ -72,11 +72,7 @@ class Rotator extends Station {
             return;
         }
 
-        if (this.modeService.getMode() === 'scan') {
-            this.setReady();
-        }
-
-        if (this.modeService.getMode() === 'compare') {
+        if (this.modeService.getMode() === this.modeService.MODE_PLACE) {
             let targetSide = (data['piece'].absolutePosition.baseSide + data['sideOffset']) % 4;
 
             this.logger.debug('Side should be up: ', targetSide, " because baseSide is " + data['piece'].absolutePosition.baseSide + " and sideOffset is " + data['sideOffset']);
@@ -90,9 +86,9 @@ class Rotator extends Station {
             data['piece'].absolutePosition.baseSide = (data['piece'].absolutePosition.baseSide + data['sideOffset']) % 4;
 
             this.recalculateBoundingBox(data['piece'], targetSide, rotation);
-
-            this.setReady();
         }
+
+        this.setReady();
     }
 }
 
