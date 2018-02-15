@@ -17,6 +17,7 @@ const LEVEL_NOTICE = 4;
 const LEVEL_INFO = 3;
 const LEVEL_WARNING = 2;
 const LEVEL_ERROR = 1;
+const LEVEL_NONE = 0;
 
 function Logger() {
     let levelColors = {
@@ -46,11 +47,14 @@ function Logger() {
             this.LEVEL_INFO = LEVEL_INFO;
             this.LEVEL_WARNING = LEVEL_WARNING;
             this.LEVEL_ERROR = LEVEL_ERROR;
+            this.LEVEL_NONE = LEVEL_NONE;
 
             let maxLevel = null;
 
             const log = (level, data) => {
+                if (level === LEVEL_NONE) return;
                 if (maxLevel !== null ? level > maxLevel : level > globalLevel) return;
+
                 if (typeof data === 'object') {
                     data = Object.keys(data).map(key => data[key]);
                 }
