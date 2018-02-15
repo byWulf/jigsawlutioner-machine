@@ -10,6 +10,10 @@ function Conveyor() {
     this.running = false;
     this.finished = true;
 
+    this.events.listen('projectSelected', () => {
+        this._initializePlates();
+    });
+
     this.setPlateCount = (plateCount) => {
         this.plateCount = plateCount;
         this._initializeStations();

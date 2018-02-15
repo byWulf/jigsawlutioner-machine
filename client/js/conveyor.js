@@ -10,15 +10,9 @@ class Conveyor {
 
     addEventListeners() {
         $('#conveyorStartButton').on('click', () => {
-            if ($(this).hasClass('disabled')) return;
-            $(this).addClass('disabled');
-
             this.socket.emit('startConveyor');
         });
         $('#conveyorStopButton').on('click', () => {
-            if ($(this).hasClass('disabled')) return;
-            $(this).addClass('disabled');
-
             this.socket.emit('stopConveyor');
         });
 

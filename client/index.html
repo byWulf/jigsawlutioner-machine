@@ -60,11 +60,36 @@
             <div class="box clearfix">
                 <h3 class="headline"><i class="fa fa-cubes"></i> Project</h3>
                 <span class="text pull-left" id="projectName"></span>
-                <button class="btn btn-primary pull-right" id="manageProjectsButton">Manage projects</button>
+                <button class="btn btn-primary pull-right" data-toggle="modal" data-target="#projectsModal">Manage projects</button>
             </div>
         </div>
     </div>
 </div>
+
+<div id="projectsModal"  class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Projects</h5>
+                <button class="close" type="button" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="tableContent"></div>
+
+                <div class="createProjectContainer">
+                    <form id="createProjectForm">
+                        <span class="text-danger createProjectError"></span>
+                        <div class="d-flex flex-margin">
+                            <input type="text" id="projectCreateNameInput" class="form-control" autocomplete="off" placeholder="Project name">
+                            <button type="submit" id="projectCreateButton" class="btn btn-primary">Create new project</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="/jquery/jquery.js"></script>
 <script src="/tether/js/tether.js"></script>
 <script src="/popper/popper.js"></script>

@@ -98,15 +98,43 @@ class Webserver {
     }
 
     registerProjectManagerEvents() {
-        this.events.listen('projectSelected', (projectName) => {
-            this.projectName = projectName;
+        this.events.listen('projectSelected', (name) => {
+            this.projectName = name;
 
             this.io.emit('projectSelected', this.projectName);
+        });
+        this.events.listen('projectDeleted', (name) => {
+            this.io.emit('projectDeleted', name);
         });
     }
 
     registerClientProjectManagerEvents(socket) {
         socket.emit('projectSelected', this.projectName || '');
+
+        socket.on('getProjects', () => {
+            socket.emit('projectList', this.projectManager.getProjectNames());
+        });
+
+        socket.on('createProject', (name) => {
+            try {
+                this.projectManager.createProject(name);
+                this.projectManager.selectProject(name);
+            } catch (e) {
+                socket.emit('createProjectError', e.toString());
+            }
+        });
+
+        socket.on('deleteProject', (name) => {
+            try {
+                this.projectManager.deleteProject(name);
+            } catch(e) {}
+        });
+
+        socket.on('loadProject', (name) => {
+            try {
+                this.projectManager.selectProject(name);
+            } catch(e) {}
+        })
     }
 }
 

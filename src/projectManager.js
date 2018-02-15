@@ -7,6 +7,7 @@ class ProjectManager {
 
         this.fs = require('fs');
         this.events = require('./events');
+        this.fsHelper = require('./fsHelper');
 
         this.folder = __dirname + '/../projects/';
         this.lastProjectFile = 'lastProject';
@@ -32,17 +33,21 @@ class ProjectManager {
     }
 
     getProjectCount() {
-        let count = 0;
+        return this.getProjectNames().length;
+    }
+
+    getProjectNames() {
+        let names = [];
         this.fs.readdirSync(this.folder).forEach((name) => {
             if (name === '.' || name === '..') {
                 return;
             }
             if (this.fs.lstatSync(this.folder + name).isDirectory()) {
-                count++;
+                names.push(name)
             }
         });
 
-        return count;
+        return names;
     }
 
     createProject(name) {
@@ -81,7 +86,7 @@ class ProjectManager {
             throw new Error('Cannot delete current project.');
         }
 
-        this.fs.rmdirSync(this.folder + name);
+        this.fsHelper.deleteFolderRecursive(this.folder + name);
 
         this.events.dispatch('projectDeleted', name);
     }
