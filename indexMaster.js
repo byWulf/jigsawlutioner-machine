@@ -5,12 +5,14 @@ const brickPi = require('./src/brickpiMaster');
 const armClient = require('./src/armClient');
 const mode = require('./src/modeService');
 const webserver = require('./src/webserver');
+const projectManager = require('./src/projectManager');
 
 const logger = require('./src/logger').getInstance('Main'.green);
 logger.setGlobalLevel(logger.LEVEL_WARNING);
 
 (async () => {
     webserver.start();
+    projectManager.init();
 
     await brickPi.init();
 

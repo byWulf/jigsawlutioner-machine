@@ -7,7 +7,7 @@ beforeEach(function() {
     events.listeners = {};
 });
 
-describe('stations/Arm', function() {
+describe('Events', function() {
     describe('#dispatch()', function() {
         it('should throw no error with empty data', function() {
             events.dispatch('foobar');

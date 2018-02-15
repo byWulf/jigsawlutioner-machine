@@ -3,6 +3,9 @@
   "version": "0.2.0",
   "description": "",
   "main": "indexMaster.js",
+  "scripts": {
+    "test": "mocha --recursive"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/byWulf/jigsawlutioner-machine.git"
@@ -35,6 +38,8 @@
     "tether": "^1.4.0"
   },
   "devDependencies": {
-    "jigsawlutioner": "git+ssh://git@github.com:byWulf/jigsawlutioner.git"
+    "jigsawlutioner": "git+ssh://git@github.com:byWulf/jigsawlutioner.git",
+    "mocha": "^5.0.1",
+    "sinon": "^4.3.0"
   }
 }

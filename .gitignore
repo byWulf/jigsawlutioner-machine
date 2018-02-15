@@ -1,5 +1,4 @@
 .idea/
 node_modules/
-images/
-pieces/
-getplacements.json
+projects/
+!projects/.gitkeep

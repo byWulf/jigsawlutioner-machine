@@ -11,6 +11,7 @@ class Photobox extends Station {
         this.sharp = require('sharp');
         this.api = require('../api');
         this.modeService = require('../modeService');
+        this.projectManager = require('../projectManager');
 
         this.index = 0;
 
@@ -30,7 +31,8 @@ class Photobox extends Station {
         this.isCompareReady = false;
         this.isCompareRunning = false;
         this.piecesLoaded = false;
-        this.pieceDir = __dirname + '/../../pieces/';
+        this.pieceDir = 'pieces/';
+        this.imagesDir = 'images/';
     }
 
     /**
@@ -133,7 +135,7 @@ class Photobox extends Station {
      */
     loadPiece(filename) {
         const fs = require('fs');
-        let content = fs.readFileSync(this.pieceDir + filename, 'utf-8');
+        let content = fs.readFileSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir + filename, 'utf-8');
 
         const Piece = require('../models/Piece');
         let piece = new Piece();
@@ -155,7 +157,7 @@ class Photobox extends Station {
             }
 
             const fs = require('fs');
-            fs.readdir(this.pieceDir, (err, fileNames) => {
+            fs.readdir(this.projectManager.getCurrentProjectFolder() + this.pieceDir, (err, fileNames) => {
                 if (err) {
                     reject(err);
                     return;
@@ -177,7 +179,7 @@ class Photobox extends Station {
      * @return {string}
      */
     getImageFilename(index) {
-        return __dirname + '/../../images/piece' + index + '.jpg';
+        return this.projectManager.getCurrentProjectFolder() + this.imagesDir + 'piece' + index + '.jpg';
     }
 
     /**
@@ -286,7 +288,7 @@ class Photobox extends Station {
         this.pieces.push(piece);
 
         const fs = require('fs');
-        fs.writeFileSync(this.pieceDir + piece.pieceIndex, JSON.stringify(piece));
+        fs.writeFileSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir + piece.pieceIndex, JSON.stringify(piece));
 
         this.logger.info('scan complete.');
         plate.setData('piece', piece);
