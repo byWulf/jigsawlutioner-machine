@@ -86,7 +86,7 @@ class Arm extends Station {
         let boardOffset = (piece.boundingBox.getCenterX() - 500) / 500;
         this.logger.debug('board offset: ', boardOffset);
 
-        return -boardOffset;
+        return boardOffset;
     }
 
     /**
@@ -206,7 +206,7 @@ class Arm extends Station {
 
         await Promise.all([
             this.armClient.moveTo(boardPosition.y * this.pieceDistance),
-            this.brickPiMaster.prepareBoard(boardPosition.x * this.pieceDistance, this.getBoardOffset(piece))
+            this.brickPiMaster.prepareBoard(boardPosition.x * this.pieceDistance, -this.getBoardOffset(piece))
         ]);
         this.logger.debug("moved");
 
