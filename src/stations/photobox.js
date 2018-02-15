@@ -13,6 +13,7 @@ class Photobox extends Station {
         this.modeService = require('../modeService');
         this.projectManager = require('../projectManager');
         this.events = require('../events');
+        this.fs = require('fs');
 
         this.index = 0;
 
@@ -94,6 +95,23 @@ class Photobox extends Station {
         });
     }
 
+    invalidatePlacementsFile() {
+        if (this.fs.existsSync(this.projectManager.getCurrentProjectFolder() + 'placements')) {
+            this.fs.unlinkSync(this.projectManager.getCurrentProjectFolder() + 'placements')
+        }
+    }
+
+    async getPlacementsData() {
+        if (this.fs.existsSync(this.projectManager.getCurrentProjectFolder() + 'placements')) {
+            return JSON.parse(this.fs.readFileSync(this.projectManager.getCurrentProjectFolder() + 'placements', 'utf-8'));
+        }
+
+        let placements = await this.api.call('getplacements', {pieces: this.getApiPiecesList(this.pieces)});
+        this.fs.writeFileSync(this.projectManager.getCurrentProjectFolder() + 'placements', JSON.stringify(placements));
+
+        return placements;
+    }
+
     /**
      * @return {Promise<void>}
      */
@@ -109,7 +127,7 @@ class Photobox extends Station {
 
         this.isCompareRunning = true;
 
-        let piecePlacementsData = await this.api.call('getplacements', {pieces: this.getApiPiecesList(this.pieces)});
+        let piecePlacementsData = await this.getPlacementsData();
 
         const Group = require('../models/Group');
         this.groups = [];
@@ -181,6 +199,8 @@ class Photobox extends Station {
                 resolve();
                 return;
             }
+
+            this.pieces = [];
 
             const fs = require('fs');
             fs.readdir(this.projectManager.getCurrentProjectFolder() + this.pieceDir, (err, fileNames) => {
@@ -315,6 +335,8 @@ class Photobox extends Station {
 
         const fs = require('fs');
         fs.writeFileSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir + piece.pieceIndex, JSON.stringify(piece));
+
+        this.invalidatePlacementsFile();
 
         this.logger.info('scan complete.');
         plate.setData('piece', piece);
