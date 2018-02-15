@@ -1,6 +1,6 @@
 require('colors');
 
-const Conveyor = require('./src/conveyor');
+const conveyor = require('./src/conveyor');
 const brickPi = require('./src/brickpiMaster');
 const armClient = require('./src/armClient');
 const mode = require('./src/modeService');
@@ -18,10 +18,9 @@ logger.setGlobalLevel(logger.LEVEL_WARNING);
         mode.switchMode(mode.getMode() === 'compare' ? 'scan' : 'compare');
     });
 
-    logger.info('Creating conveyor');
-
-    const conveyor = new Conveyor(11, brickPi.nextPlate);
-
+    logger.info('Setting up conveyor');
+    conveyor.setPlateCount(11);
+    conveyor.setForwardFunction(brickPi.nextPlate);
     conveyor.addStation(3, require('./src/stations/photobox'));
     conveyor.addStation(5, require('./src/stations/rotator'));
     conveyor.addStation(8, require('./src/stations/arm'));
@@ -31,8 +30,4 @@ logger.setGlobalLevel(logger.LEVEL_WARNING);
 
     logger.info('Resetting motors');
     await Promise.all([brickPi.resetMotors(), armClient.reset()]);
-
-    logger.info('Starting conveyor');
-    // noinspection JSIgnoredPromiseFromCall
-    conveyor.start();
 })();

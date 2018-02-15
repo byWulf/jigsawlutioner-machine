@@ -8,6 +8,9 @@ class Webserver {
         this.express = require('express');
         this.started = false;
         this.port = 1301;
+
+        this.events = require('./events');
+        this.conveyor = require('./conveyor');
     }
 
     start() {
@@ -31,9 +34,45 @@ class Webserver {
 
         this.io.on('connection', (socket) => {
             this.logger.debug('New connection ' + socket.id);
+
+            this.registerClientConveyorEvents(socket);
         });
 
+        this.registerConveyorEvents();
+
         this.started = true;
+    }
+
+    registerConveyorEvents(socket) {
+        this.events.listen('conveyorStarted', () => {
+            this.conveyorState = 'running';
+
+            this.io.emit('conveyorState', this.conveyorState);
+        });
+
+        this.events.listen('conveyorStopped', () => {
+            this.conveyorState = 'stopped';
+
+            this.io.emit('conveyorState', this.conveyorState);
+        });
+
+        this.events.listen('stoppingConveyor', () => {
+            this.conveyorState = 'stopping';
+
+            this.io.emit('conveyorState', this.conveyorState);
+        });
+    }
+
+    registerClientConveyorEvents(socket) {
+        socket.emit('conveyorState', this.conveyorState || 'stopped');
+
+        socket.on('startConveyor', () => {
+            this.conveyor.start();
+        });
+
+        socket.on('stopConveyor', () => {
+            this.conveyor.stop();
+        });
     }
 }
 

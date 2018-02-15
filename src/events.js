@@ -9,7 +9,7 @@ class Events {
 
     /**
      * @param {string} eventName
-     * @param {*} data
+     * @param {*=} data
      */
     dispatch(eventName, data) {
         this.logger.debug('Dispatching event ' + eventName + ' with data:', data);

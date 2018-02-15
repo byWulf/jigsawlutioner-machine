@@ -1,22 +1,38 @@
 require('colors');
 
-function Conveyor(plateCount, forwardFunction) {
+function Conveyor() {
     this.logger = require('./logger').getInstance('Conveyor'.magenta);
+    this.events = require('./events');
 
-    this.forwardFunction = forwardFunction;
+    this.plateCount = 0;
+
+    this.forwardFunction = null;
     this.running = false;
+    this.finished = true;
+
+    this.setPlateCount = (plateCount) => {
+        this.plateCount = plateCount;
+        this._initializeStations();
+        this._initializePlates();
+    };
+
+    this.setForwardFunction = (forwardFunction) => {
+        this.forwardFunction = forwardFunction;
+    };
 
     /**
      * @return {Promise<void>}
      */
     this.start = async () => {
         this.logger.debug('Starting');
-        if (this.running) {
+        if (!this.finished) {
             this.logger.debug('- already running. Nothing to do');
             return;
         }
 
         this.running = true;
+        this.finished = false;
+        this.events.dispatch('conveyorStarted');
         this.logger.debug('Started. Entering loop.');
         while(this.running) {
             this.logger.debug('awaiting move');
@@ -29,6 +45,9 @@ function Conveyor(plateCount, forwardFunction) {
             await this._waitForAllStationsReady();
             this.logger.debug('all stations ready');
         }
+
+        this.finished = true;
+        this.events.dispatch('conveyorStopped');
     };
 
     /**
@@ -36,25 +55,24 @@ function Conveyor(plateCount, forwardFunction) {
      */
     this.stop = () => {
         this.running = false;
+        this.events.dispatch('stoppingConveyor');
     };
 
     /**
-     * @param {int} plateCount
      * @private
      */
-    this._initializeStations = (plateCount) => {
-        this.stations = new Array(plateCount);
+    this._initializeStations = () => {
+        this.stations = new Array(this.plateCount);
     };
 
     /**
-     * @param {int} plateCount
      * @private
      */
-    this._initializePlates = (plateCount) => {
+    this._initializePlates = () => {
         const Plate = require('./models/Plate');
 
-        this.plates = new Array(plateCount);
-        for (let i = 0; i < plateCount; i++) {
+        this.plates = new Array(this.plateCount);
+        for (let i = 0; i < this.plates.length; i++) {
             this.plates[i] = new Plate();
         }
     };
@@ -146,9 +164,6 @@ function Conveyor(plateCount, forwardFunction) {
             }, 100);
         });
     };
-
-    this._initializeStations(plateCount);
-    this._initializePlates(plateCount);
 }
 
-module.exports = Conveyor;
+module.exports = new Conveyor();

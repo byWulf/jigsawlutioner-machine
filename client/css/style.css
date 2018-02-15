@@ -29,7 +29,15 @@ html, body {
 .headline {
     font-family: 'Ubuntu', sans-serif;
     font-weight: 700;
+    text-align: center;
+}
+.text {
+    font-size: 1.5rem;
+}
+h1.headline {
     margin-bottom: 0;
+}
+.logoPadding {
     padding-right: 133px;
 }
 .logo {
