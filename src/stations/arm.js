@@ -115,6 +115,10 @@ class Arm extends Station {
         this.logger.debug("Moved to trash");
 
         this.setReady();
+
+        await this.armClient.standby();
+        this.logger.debug("standby");
+
         this.armFinished = true;
     }
 
@@ -217,6 +221,9 @@ class Arm extends Station {
 
         await this.armClient.place();
         this.logger.debug("placed");
+
+        await this.armClient.standby();
+        this.logger.debug("standby");
 
         this.armFinished = true;
     }
