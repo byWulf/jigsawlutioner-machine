@@ -8,3 +8,6 @@ modeService.addEventListeners();
 
 let projectManager = new ProjectManager(socket);
 projectManager.addEventListeners();
+
+let statistics = new Statistics(socket);
+statistics.addEventListeners();

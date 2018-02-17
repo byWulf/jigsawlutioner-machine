@@ -44,6 +44,8 @@ class Photobox extends Station {
         });
 
         this.createNeededDirs();
+
+        this.loadPieces();
     }
 
     /**
@@ -212,6 +214,7 @@ class Photobox extends Station {
                 fileNames.forEach((filename) => {
                     this.loadPiece(filename);
                 });
+                this.events.dispatch('piecesScannedChanged', this.pieces.length);
 
                 this.piecesLoaded = true;
 
@@ -332,6 +335,7 @@ class Photobox extends Station {
      */
     async handleScanMode(plate, piece) {
         this.pieces.push(piece);
+        this.events.dispatch('piecesScannedChanged', this.pieces.length);
 
         const fs = require('fs');
         fs.writeFileSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir + piece.pieceIndex, JSON.stringify(piece));

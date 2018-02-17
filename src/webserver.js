@@ -40,11 +40,13 @@ class Webserver {
             this.registerClientConveyorEvents(socket);
             this.registerClientModeEvents(socket);
             this.registerClientProjectManagerEvents(socket);
+            this.registerClientStatisticsEvents(socket);
         });
 
         this.registerConveyorEvents();
         this.registerModeEvents();
         this.registerProjectManagerEvents();
+        this.registerStatisticsEvents();
 
         this.started = true;
     }
@@ -135,6 +137,18 @@ class Webserver {
                 this.projectManager.selectProject(name);
             } catch(e) {}
         })
+    }
+
+    registerStatisticsEvents() {
+        this.events.listen('piecesScannedChanged', (piecesCount) => {
+            this.piecesScanned = piecesCount;
+
+            this.io.emit('piecesScannedChanged', piecesCount);
+        });
+    }
+
+    registerClientStatisticsEvents(socket) {
+        socket.emit('piecesScannedChanged', this.piecesScanned || 0);
     }
 }
 
