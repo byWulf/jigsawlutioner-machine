@@ -266,7 +266,7 @@ class Photobox extends Station {
             throw new Error(pieceData['errorMessage']);
         }
 
-        if (typeof pieceData.sides === 'undefined' || !(pieceData.side instanceof Array) || pieceData.side.length !== 4) {
+        if (typeof pieceData.sides === 'undefined' || !(pieceData.sides instanceof Array) || pieceData.sides.length !== 4) {
             throw new Error('Sides not recognized');
         }
 
