@@ -4,7 +4,7 @@ const net = require('net');
 const JsonSocket = require('json-socket');
 
 const port = 1201;
-const host = '192.168.0.36'; //jigsawlutioner-arm
+const host = '192.168.0.157'; //jigsawlutioner-arm
 
 const logger = require('./logger').getInstance('ArmClient'.yellow);
 
