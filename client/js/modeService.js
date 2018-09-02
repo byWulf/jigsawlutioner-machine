@@ -25,6 +25,9 @@ class ModeService {
         $('input[name="modeRadio"]').val(mode).closest('label').removeClass('active');
 
         $('#mode-' + mode).closest('label').addClass('active');
+
+        $('.hideOnMode-' + mode).hide();
+        $('.showOnMode-' + mode).show();
     };
 
     getMode() {

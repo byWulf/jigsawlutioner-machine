@@ -7,9 +7,10 @@ class Photobox extends Station {
         super();
 
         this.logger = require('../logger').getInstance('Station'.cyan + ' Photobox'.yellow);
+        //this.logger.setLevel(this.logger.LEVEL_DEBUG);
         this.camera = require('../camera');
         this.sharp = require('sharp');
-        this.api = require('../api');
+        this.api = require('../apiOffline'); //TODO: toggle api with apiOffline
         this.modeService = require('../modeService');
         this.projectManager = require('../projectManager');
         this.events = require('../events');
@@ -281,7 +282,7 @@ class Photobox extends Station {
         if (error.toString() === 'Error: No areas found') {
             plate.setData('empty', true);
         } else {
-            this.logger.error('Error: ' + error);
+            this.logger.error('Error: ' + error, error.stack);
         }
 
         plate.setData('valid', false);
@@ -397,8 +398,11 @@ class Photobox extends Station {
         }
 
         let existingPiece = null;
+        this.logger.debug('BEGIN DEBUG');
+        this.logger.debug(this.pieces);
+        this.logger.debug(foundPieceInfo);
         for (let i = 0; i < this.pieces.length; i++) {
-            if (this.pieces[i].pieceIndex === parseInt(foundPieceInfo['pieceIndex'], 10)) {
+            if (parseInt(this.pieces[i].pieceIndex, 10) === parseInt(foundPieceInfo['pieceIndex'], 10)) {
                 existingPiece = this.pieces[i];
                 break;
             }

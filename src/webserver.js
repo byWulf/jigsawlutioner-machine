@@ -8,11 +8,13 @@ class Webserver {
         this.express = require('express');
         this.started = false;
         this.port = 1301;
+        this.boardSwitching = false;
 
         this.events = require('./events');
         this.conveyor = require('./conveyor');
         this.modeService = require('./modeService');
         this.projectManager = require('./projectManager');
+        this.arm = require('./stations/arm');
     }
 
     start() {
@@ -41,12 +43,14 @@ class Webserver {
             this.registerClientModeEvents(socket);
             this.registerClientProjectManagerEvents(socket);
             this.registerClientStatisticsEvents(socket);
+            this.registerClientBoardEvents(socket);
         });
 
         this.registerConveyorEvents();
         this.registerModeEvents();
         this.registerProjectManagerEvents();
         this.registerStatisticsEvents();
+        this.registerBoardEvents();
 
         this.started = true;
     }
@@ -75,10 +79,12 @@ class Webserver {
         socket.emit('conveyorState', this.conveyorState || 'stopped');
 
         socket.on('startConveyor', () => {
+            this.logger.debug('Got message: startConveyor');
             this.conveyor.start();
         });
 
         socket.on('stopConveyor', () => {
+            this.logger.debug('Got message: stopConveyor');
             this.conveyor.stop();
         });
     }
@@ -95,6 +101,7 @@ class Webserver {
         socket.emit('modeSwitched', this.mode || this.modeService.MODE_SCAN);
 
         socket.on('switchMode', (mode) => {
+            this.logger.debug('Got message: switchMode', mode);
             this.modeService.switchMode(mode);
         });
     }
@@ -114,10 +121,12 @@ class Webserver {
         socket.emit('projectSelected', this.projectName || '');
 
         socket.on('getProjects', () => {
+            this.logger.debug('Got message: getProjects');
             socket.emit('projectList', this.projectManager.getProjectNames());
         });
 
         socket.on('createProject', (name) => {
+            this.logger.debug('Got message: createProject', name);
             try {
                 this.projectManager.createProject(name);
                 this.projectManager.selectProject(name);
@@ -127,12 +136,14 @@ class Webserver {
         });
 
         socket.on('deleteProject', (name) => {
+            this.logger.debug('Got message: deleteProject', name);
             try {
                 this.projectManager.deleteProject(name);
             } catch(e) {}
         });
 
         socket.on('loadProject', (name) => {
+            this.logger.debug('Got message: loadProject', name);
             try {
                 this.projectManager.selectProject(name);
             } catch(e) {}
@@ -149,6 +160,40 @@ class Webserver {
 
     registerClientStatisticsEvents(socket) {
         socket.emit('piecesScannedChanged', this.piecesScanned || 0);
+    }
+
+    registerBoardEvents() {
+        this.events.listen('boardSelected', (boardIndex) => {
+            this.io.emit('boardSelected', boardIndex);
+        });
+        this.events.listen('boardStatistics', (boardStatistics) => {
+            this.io.emit('boardStatistics', boardStatistics);
+        });
+        this.events.listen('switchBoardAndBox', () => {
+            this.io.emit('switchBoardAndBox');
+            this.boardSwitching = true;
+        });
+        this.events.listen('continueAfterBoardSwitch', () => {
+            this.io.emit('boardSwitched');
+            this.boardSwitching = false;
+        });
+    }
+
+    registerClientBoardEvents(socket) {
+        socket.emit('boardSelected', this.arm.getSelectedBoard());
+        socket.emit('boardStatistics', this.arm.getBoardStatistics());
+        if (this.boardSwitching) {
+            socket.emit('switchBoardAndBox');
+        }
+
+        socket.on('selectNextBoard', async () => {
+            this.logger.debug('Got message: nextBoard');
+            await this.arm.selectNextBoard();
+        });
+        socket.on('boardSwitched', () => {
+            this.logger.debug('Got message: boardSwitched');
+            this.arm.continueAfterSwitch();
+        });
     }
 }
 

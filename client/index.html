@@ -74,6 +74,21 @@
                 </div>
             </div>
         </div>
+        <div class="col-12 col-md-6 col-lg-6 col-xl-4">
+            <div class="box clearfix hideOnMode-scan showOnMode-place">
+                <h3 class="headline"><i class="fa fa-square-o"></i> Board</h3>
+                <div class="foobar">
+                    <div class="row no-gutters text">
+                        <div class="col-7">Selected board:</div>
+                        <div class="col-2" id="boardSelectedBoard"></div>
+                        <div class="col-3"><button class="btn btn-secondary btn-block" id="boardSelectNext">Next board</button></div>
+                    </div>
+                </div>
+                <div class="foobar">
+                    <div class="row no-gutters text" id="boardStatistics"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -101,6 +116,23 @@
     </div>
 </div>
 
+<div id="boardSwitchModal"  class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="headline no-margin"><i class="fa fa-square-o"></i> Switching board</h3>
+            </div>
+            <div class="modal-body">
+                <p>Please replace the currently attached board with a new one.</p>
+                <p>Please remove the first box, remove its pieces (these will get on the conveyor next) and place the empty box at position 3 (move the first 2 boxes to the right).</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="boardSwitchedButton" class="btn btn-primary">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="/jquery/jquery.js"></script>
 <script src="/tether/js/tether.js"></script>
 <script src="/popper/popper.js"></script>
@@ -111,6 +143,7 @@
 <script src="js/modeService.js"></script>
 <script src="js/projectManager.js"></script>
 <script src="js/statistics.js"></script>
+<script src="js/board.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -12,18 +12,31 @@ class Arm extends Station {
         this.armClient = require('../armClient');
         this.brickPiMaster = require('../brickpiMaster');
         this.events = require('../events');
+        this.conveyor = require('../conveyor');
 
         this.armFinished = true;
 
         this.groupsOrdered = false;
 
-        this.pieceDistance = 3;//1.9;
-        this.tileWidth = Math.floor(30/*cm on z-axis*/ / this.pieceDistance);
-        this.tileHeight = Math.floor(25/*cm on x-axis*/ / this.pieceDistance);
+        this.pieceDistance = 2.5;//1.9;
+        this.boardWidth = Math.floor(40/*cm on z-axis*/ / this.pieceDistance);
+        this.boardHeight = Math.floor(35/*cm on x-axis*/ / this.pieceDistance);
+
+        this.maxX = 0;
+        this.maxY = 0;
+        this.selectedBoard = 0;
+        this.boardStatistics = {};
 
         this.events.listen('projectSelected', async () => {
             this.groupsOrdered = false;
+            this.selectedBoard = 0;
+            this.boardStatistics = {};
+            this.maxX = 0;
+            this.maxY = 0;
+            this.events.dispatch('boardSelected', this.selectedBoard);
+            this.events.dispatch('boardStatistics', this.boardStatistics);
         });
+
     }
 
     /**
@@ -108,8 +121,11 @@ class Arm extends Station {
         this.logger.debug("arm finished");
         this.armFinished = false;
 
-        await this.armClient.collect(this.getArmOffset(piece));
-        this.logger.debug("collected");
+        await Promise.all([
+            this.armClient.collect(this.getArmOffset(piece)),
+            this.brickPiMaster.selectSortBox(boxIndex)
+        ]);
+        this.logger.debug("collected and box selected");
 
         await this.armClient.moveToTrash();
         this.logger.debug("Moved to trash");
@@ -151,17 +167,41 @@ class Arm extends Station {
         }
 
         const ShelfPack = require('@mapbox/shelf-pack');
-        let sprite = new ShelfPack(this.tileWidth * 1000, this.tileHeight * 1000);
+        let sprite = new ShelfPack(this.boardWidth * 1000, this.boardHeight * 1000);
         // noinspection JSUnresolvedFunction
         sprite.pack(packArray, {inPlace: true});
 
+        this.groupsOrdered = true;
+
+        this.calculateArea(groups);
+
+        let boardCount = (Math.floor((this.maxX + 1) / this.boardWidth)) * Math.ceil((this.maxY + 1) / this.boardHeight);
+        this.logger.debug('All boards are in sum ' + this.maxX + ' x ' + this.maxY + ' big, which makes ' + boardCount + ' boards');
+
+        this.boardStatistics = {};
+        for (let i = 0; i < boardCount; i++) {
+            this.boardStatistics[i] = 0;
+        }
+        this.events.dispatch('boardStatistics', this.boardStatistics);
+    }
+
+    /**
+     * @param groups
+     */
+    calculateArea(groups) {
         for (let i = 0; i < groups.length; i++) {
             if (groups[i].pieces.length > 1) {
                 this.logger.debug('Group ' + groups[i].groupIndex + ' goes to: ', groups[i].ownPosition);
+
+                for (let j = 0; j < groups[i].pieces.length; j++) {
+                    try {
+                        let boardPosition = this.getBoardPosition(groups, groups[i].pieces[j]);
+                        this.maxX = Math.max(this.maxX, boardPosition.x);
+                        this.maxY = Math.max(this.maxY, boardPosition.y);
+                    } catch (e) {}
+                }
             }
         }
-
-        this.groupsOrdered = true;
     }
 
     /**
@@ -239,12 +279,29 @@ class Arm extends Station {
         try {
             let boardPosition = this.getBoardPosition(groups, piece);
 
-            if (boardPosition.x > this.tileWidth || boardPosition.y > this.tileHeight) {
+            let boardIndex = Math.floor(boardPosition.y / this.boardHeight) * Math.ceil((this.maxX + 1) / this.boardWidth) + Math.floor(boardPosition.x / this.boardWidth);
+            this.logger.debug('Is on board ' + boardIndex + '(x: ' + boardPosition.x + ', y:' + boardPosition.y + ', boardWidth: ' + this.boardWidth + ', maxWidth: ' + this.maxX + ', boardHeight: ' + this.boardHeight + ', maxHeight: ' + this.maxY + ')');
+
+            if (boardIndex !== this.selectedBoard) {
                 this.logger.info('Piece not in current board.');
-                await this.movePieceToBox(piece, 0);
+
+                let boxIndex = boardIndex - this.selectedBoard - 1;
+                if (boxIndex < 0 || boxIndex > 3) {
+                    boxIndex = 3;
+                }
+
+                this.logger.debug('Have to move it to box ' + boxIndex + ', because it is on board ' + boardIndex + ' and the current board is ' +  this.selectedBoard);
+
+                await this.movePieceToBox(piece, boxIndex);
 
                 return;
             }
+
+            this.boardStatistics[this.selectedBoard]++;
+            this.events.dispatch('boardStatistics', this.boardStatistics);
+
+            boardPosition.x -= (boardIndex % Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardWidth;
+            boardPosition.y -= Math.floor(boardIndex / Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardHeight;
 
             await this.moveToBoard(piece, boardPosition);
         } catch (e) {
@@ -282,6 +339,37 @@ class Arm extends Station {
         } else {
             throw new Error('Invalid mode');
         }
+    }
+
+    getSelectedBoard() {
+        return this.selectedBoard;
+    }
+
+    async selectNextBoard() {
+        this.selectedBoard++;
+
+        this.events.dispatch('boardSelected', this.selectedBoard);
+        this.events.dispatch('switchBoardAndBox');
+        this.conveyor.stop();
+
+        this.logger.info('Selected board: ' + this.selectedBoard + ' - waiting for user to replace board and box');
+
+        await Promise.all([
+            this.brickPiMaster.moveBoardToStandby(),
+            this.brickPiMaster.moveSortBoxToStandby()
+        ]);
+    }
+
+    continueAfterSwitch() {
+        // noinspection JSIgnoredPromiseFromCall
+        this.conveyor.start();
+        this.logger.info('User replaced board and box. Continuing.');
+
+        this.events.dispatch('continueAfterBoardSwitch');
+    }
+
+    getBoardStatistics() {
+        return this.boardStatistics;
     }
 }
 

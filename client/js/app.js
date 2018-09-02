@@ -11,3 +11,6 @@ projectManager.addEventListeners();
 
 let statistics = new Statistics(socket);
 statistics.addEventListeners();
+
+let board = new Board(socket);
+board.addEventListeners();

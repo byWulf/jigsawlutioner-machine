@@ -23,7 +23,6 @@ function BrickPiArm() {
         if (this.isInitialized) return;
 
         await this.brickPi.set_address(1, 'A778704A514D355934202020FF110722');
-        await this.brickPi.set_address(2, 'DF9E6AC3514D355934202020FF112718');
 
         this.BP = new this.brickPi.BrickPi3(1);
 

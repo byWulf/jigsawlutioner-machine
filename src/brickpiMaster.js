@@ -16,32 +16,37 @@ function BrickPiMaster() {
     this.init = async () => {
         if (this.isInitialized) return;
 
-        await this.brickPi.set_address(1, 'A778704A514D355934202020FF110722');
-        await this.brickPi.set_address(2, 'DF9E6AC3514D355934202020FF112718');
-    
-        this.BP = new this.brickPi.BrickPi3(2);
-    
-        this.brickPi.utils.resetAllWhenFinished(this.BP);
-    
+        await this.brickPi.set_address(1, 'df9e6ac3514d355934202020ff112718');
+        await this.brickPi.set_address(2, '09f95596514d32384e202020ff0f272f');
+
+        this.BP1 = new this.brickPi.BrickPi3(1);
+        this.BP2 = new this.brickPi.BrickPi3(2);
+
+        this.brickPi.utils.resetAllWhenFinished(this.BP1);
+        this.brickPi.utils.resetAllWhenFinished(this.BP2);
+
         // noinspection JSUnresolvedFunction
-        this.conveyorMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_A);
+        this.conveyorMotor = this.brickPi.utils.getMotor(this.BP1, this.BP1.PORT_A);
         this.conveyorSensor = {pin: 3};
     
         // noinspection JSUnresolvedFunction
-        this.rotatorYMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_D);
+        this.rotatorYMotor = this.brickPi.utils.getMotor(this.BP1, this.BP1.PORT_D);
         // noinspection JSUnresolvedFunction
-        this.rotatorRotateMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_C);
+        this.rotatorRotateMotor = this.brickPi.utils.getMotor(this.BP1, this.BP1.PORT_C);
     
         // noinspection JSUnresolvedFunction
-        this.plateZMotor = this.brickPi.utils.getMotor(this.BP, this.BP.PORT_B);
+        this.plateZMotor = this.brickPi.utils.getMotor(this.BP1, this.BP1.PORT_B);
     
         this.rpio.open(this.conveyorSensor.pin, this.rpio.INPUT, this.rpio.PULL_DOWN);
 
         // noinspection JSUnresolvedFunction
-        this.modeSwitcher = this.brickPi.utils.getSensor(this.BP, this.BP.PORT_3);
-        await this.modeSwitcher.setType(this.modeSwitcher.BP.SENSOR_TYPE.EV3_TOUCH);
+        this.modeSwitcher = this.brickPi.utils.getSensor(this.BP1, this.BP1.PORT_3);
+        await this.modeSwitcher.setType(this.BP1.SENSOR_TYPE.EV3_TOUCH);
         // noinspection JSIgnoredPromiseFromCall
         this._startModeSwitcherListener();
+
+        // noinspection JSUnresolvedFunction
+        this.sorterMotor = this.brickPi.utils.getMotor(this.BP2, this.BP2.PORT_D);
 
         this.isInitialized = true;
     };
@@ -75,7 +80,7 @@ function BrickPiMaster() {
         await Promise.all([this._resetRotatorY()]);
 
         //Then everything else
-        await Promise.all([this._resetRotatorRotate(), this._resetConveyor(), this._resetPlateZ()]);
+        await Promise.all([this._resetRotatorRotate(), this._resetConveyor(), this._resetPlateZ(), this._resetSorter()]);
     };
 
     /**
@@ -131,6 +136,14 @@ function BrickPiMaster() {
      */
     this._resetPlateZ = async () => {
         await this.brickPiHelper.resetMotorEncoder(this.plateZMotor.BP, this.plateZMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 20, 10000, 40);
+    };
+
+    /**
+     * @returns {Promise<void>}
+     * @private
+     */
+    this._resetSorter = async () => {
+        await this.brickPiHelper.resetMotorEncoder(this.sorterMotor.BP, this.sorterMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.FORWARD_LIMIT, 0, 20, 10000, 40);
     };
 
     /**
@@ -206,12 +219,28 @@ function BrickPiMaster() {
         await Promise.all([this.plateZMotor.setPosition(maxMotorPosition - targetMotorPosition + offsetPosition, 100)]);
     };
 
+    this.moveBoardToStandby = async () => {
+        await this.plateZMotor.setPosition(3200);
+    };
+
     /**
      * @param {function} callback
      */
     this.onModeSwitch = (callback) => {
         this.modeSwitcherCallbacks.push(callback);
-    }
+    };
+
+    this.selectSortBox = async (boxIndex) => {
+        if (boxIndex < 0 || boxIndex > 3) {
+            throw new Error('We only have 4 boxes. Please select a box between 0 and 3');
+        }
+
+        await this.sorterMotor.setPosition(-950 * boxIndex);
+    };
+
+    this.moveSortBoxToStandby = async () => {
+        await this.sorterMotor.setPosition(-3400);
+    };
 }
 
 module.exports = new BrickPiMaster();

@@ -40,17 +40,18 @@ function letUserControlMotors() {
 }
 
 (async () => {
-    await brickpi3.set_address(1, 'A778704A514D355934202020FF110722');
-    await brickpi3.set_address(2, 'DF9E6AC3514D355934202020FF112718');
 
-    BP = new brickpi3.BrickPi3(1);
+    await brickpi3.set_address(1, 'df9e6ac3514d355934202020ff112718');
+    await brickpi3.set_address(2, '09f95596514d32384e202020ff0f272f');
+
+    BP = new brickpi3.BrickPi3(2);
 
     brickpi3.utils.resetAllWhenFinished(BP);
 
-    brickpi3.utils.resetMotorEncoder(BP, BP.PORT_A);
-    brickpi3.utils.resetMotorEncoder(BP, BP.PORT_B);
-    brickpi3.utils.resetMotorEncoder(BP, BP.PORT_C);
-    brickpi3.utils.resetMotorEncoder(BP, BP.PORT_D);
+    await brickpi3.utils.resetMotorEncoder(BP, BP.PORT_A);
+    await brickpi3.utils.resetMotorEncoder(BP, BP.PORT_B);
+    await brickpi3.utils.resetMotorEncoder(BP, BP.PORT_C);
+    await brickpi3.utils.resetMotorEncoder(BP, BP.PORT_D);
 
     letUserControlMotors();
 })();

@@ -7,7 +7,7 @@ class Rotator extends Station {
         super();
 
         this.logger = require('../logger').getInstance('Station'.cyan + ' Rotator'.green);
-        this.logger.setLevel(this.logger.LEVEL_DEBUG);
+        //this.logger.setLevel(this.logger.LEVEL_DEBUG);
         this.brickPi = require('../brickpiMaster');
         this.modeService = require('../modeService');
     }
