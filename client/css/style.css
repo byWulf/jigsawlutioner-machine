@@ -71,3 +71,47 @@ h1.headline {
     padding: 15px;
     margin: 0 -15px -15px -15px;
 }
+
+.groupContainer {
+    overflow: auto;
+    width: 100%;
+    height: 700px;
+    position: relative;
+    border: 1px solid #aaa;
+}
+
+.piece {
+    position: absolute;
+}
+
+.piece.imageContainer img {
+    position: absolute;
+    transform: translate(0px, 0px);
+}
+
+.piece .sideContainer {
+    position: absolute;
+}
+.piece .side {
+    position: absolute;
+    transform: perspective(3px) rotateX(5deg);
+    transform-origin: bottom;
+}
+
+.piece .side.selected {
+    background-color: #f00;
+    box-shadow: 0 0 10px #fff;
+}
+
+.piece .side:hover, .piece .side.hover {
+    background-color: rgba(255, 0, 0, 0.5);
+    box-shadow: 0 0 10px #fff;
+}
+
+.piece.imageContainer {
+    z-index: 1;
+}
+
+.piece.buttonContainer {
+    z-index: 2;
+}

@@ -26,6 +26,10 @@ function Piece() {
      * @type {Object<string>}
      */
     this.files = {};
+    /**
+     * @type {Object<Object>}
+     */
+    this.images = {};
 
     this.fillFromObject = (object) => {
         if (typeof object !== 'object') {
@@ -36,6 +40,7 @@ function Piece() {
         this.sides = object.sides || [];
         this.boundingBox.fillFromObject(object.boundingBox);
         this.files = object.files || {};
+        this.images = object.images || {};
         this.absolutePosition.fillFromObject(object.absolutePosition);
     };
 }

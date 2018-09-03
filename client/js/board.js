@@ -41,7 +41,7 @@ class Board {
         $('#boardStatistics').empty();
 
         for (let index in statistics) {
-            $('<div class="col-6">Board ' + (parseInt(index) + 1) + '</div><div class="col-6">' + statistics[index] + '</div>').appendTo($('#boardStatistics'));
+            $('<div class="col-6">Board ' + (parseInt(index) + 1) + '</div><div class="col-6">' + statistics[index].placed + ' / ' + statistics[index].count + '</div>').appendTo($('#boardStatistics'));
         }
     }
 }

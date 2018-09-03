@@ -14,3 +14,11 @@ statistics.addEventListeners();
 
 let board = new Board(socket);
 board.addEventListeners();
+
+window.services = {
+    conveyor: conveyor,
+    modeService: modeService,
+    projectManager: projectManager,
+    statistics: statistics,
+    board: board
+};

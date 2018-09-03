@@ -31,6 +31,7 @@ class Webserver {
         this.app.use('/tether', this.express.static('node_modules/tether/dist'));
         this.app.use('/popper', this.express.static('node_modules/popper.js/dist/umd'));
         this.app.use('/animate.css', this.express.static('node_modules/animate.css'));
+        this.app.use('/projects', this.express.static('projects'));
 
         this.http.listen(this.port, () => {
             this.logger.info('Webserver started on port ' + this.port);
@@ -95,14 +96,22 @@ class Webserver {
 
             this.io.emit('modeSwitched', this.mode);
         });
+
+        this.events.listen('placements', (placements) => {
+            this.io.emit('placements', placements);
+        });
     }
 
     registerClientModeEvents(socket) {
         socket.emit('modeSwitched', this.mode || this.modeService.MODE_SCAN);
 
-        socket.on('switchMode', (mode) => {
+        socket.on('switchMode', async (mode) => {
             this.logger.debug('Got message: switchMode', mode);
-            this.modeService.switchMode(mode);
+            await this.modeService.switchMode(mode);
+        });
+
+        socket.on('recalculatePlacements', async (ignoreMatches) => {
+            this.modeService.recalculatePlacements(ignoreMatches);
         });
     }
 

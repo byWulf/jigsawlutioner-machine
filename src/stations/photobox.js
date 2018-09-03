@@ -226,10 +226,15 @@ class Photobox extends Station {
 
     /**
      * @param {int} index
+     * @param {string} ending
+     * @param {string} suffix
      * @return {string}
      */
-    getImageFilename(index) {
-        return this.projectManager.getCurrentProjectFolder() + this.imagesDir + 'piece' + index + '.jpg';
+    getImageFilename(index, ending, suffix) {
+        return this.projectManager.getCurrentProjectFolder() +
+            this.imagesDir +
+            'piece' + index + (typeof suffix !== 'undefined' ? suffix : '') +
+            '.' + (typeof ending !== 'undefined' ? ending : 'jpg');
     }
 
     /**
@@ -260,7 +265,8 @@ class Photobox extends Station {
             imageData: imageBuffer.toString('base64'),
             pieceIndex: index,
             threshold: parseInt(this.settings.parseThresh, 10),
-            reduction: parseInt(this.settings.parseReduction, 10)
+            reduction: parseInt(this.settings.parseReduction, 10),
+            returnTransparentImage: true
         });
 
         if (typeof pieceData['errorMessage'] !== 'undefined') {
@@ -295,7 +301,7 @@ class Photobox extends Station {
      * @param {object} pieceData
      * @return {Piece}
      */
-    createPiece(index, pieceData) {
+    async createPiece(index, pieceData) {
         const Piece = require('../models/Piece');
         let piece = new Piece();
         piece.fillFromObject(pieceData);
@@ -303,6 +309,15 @@ class Photobox extends Station {
 
         const path = require("path");
         piece.files.original = path.basename(this.getImageFilename(index));
+
+        let transparentImageFilename = this.getImageFilename(index, 'png', '_transparent');
+        console.log(piece);
+        let buffer = Buffer.from(piece.images.transparent.buffer, piece.images.transparent.encoding);
+        console.log(buffer);
+        console.log(transparentImageFilename);
+        await this.sharp(buffer).png().toFile(transparentImageFilename);
+        console.log("done");
+        piece.files.transparent = path.basename(transparentImageFilename);
 
         return piece;
     }
@@ -316,7 +331,7 @@ class Photobox extends Station {
         let imageBuffer = await this.takeImage(currentIndex);
         let pieceData = await this.parseImage(currentIndex, imageBuffer);
 
-        return this.createPiece(currentIndex, pieceData);
+        return await this.createPiece(currentIndex, pieceData);
     }
 
     /**
@@ -330,7 +345,7 @@ class Photobox extends Station {
         let imageBuffer = await this.sharp(filename).toBuffer();
         let pieceData = await this.parseImage(currentIndex, imageBuffer);
 
-        return this.createPiece(currentIndex, pieceData);
+        return await this.createPiece(currentIndex, pieceData);
     }
 
     /**

@@ -180,7 +180,21 @@ class Arm extends Station {
 
         this.boardStatistics = {};
         for (let i = 0; i < boardCount; i++) {
-            this.boardStatistics[i] = 0;
+            this.boardStatistics[i] = {
+                count: 0,
+                placed: 0
+            };
+        }
+        for (let i = 0; i < groups.length; i++) {
+            if (groups[i].pieces.length > 1) {
+                for (let j = 0; j < groups[i].pieces.length; j++) {
+                    try {
+                        let boardPosition = this.getBoardPosition(groups, groups[i].pieces[j]);
+                        let boardIndex = this.getBoardIndexByPosition(boardPosition);
+                        this.boardStatistics[boardIndex].count++;
+                    } catch (e) {}
+                }
+            }
         }
         this.events.dispatch('boardStatistics', this.boardStatistics);
     }
@@ -269,6 +283,17 @@ class Arm extends Station {
     }
 
     /**
+     * @param {BoardPosition} boardPosition
+     * @returns {number}
+     */
+    getBoardIndexByPosition(boardPosition) {
+        let boardIndex = Math.floor(boardPosition.y / this.boardHeight) * Math.ceil((this.maxX + 1) / this.boardWidth) + Math.floor(boardPosition.x / this.boardWidth);
+        this.logger.debug('Is on board ' + boardIndex + '(x: ' + boardPosition.x + ', y:' + boardPosition.y + ', boardWidth: ' + this.boardWidth + ', maxWidth: ' + this.maxX + ', boardHeight: ' + this.boardHeight + ', maxHeight: ' + this.maxY + ')');
+
+        return boardIndex;
+    }
+
+    /**
      * Calculates, where the piece should go on the board and moves it to there.
      *
      * @param {Group[]} groups
@@ -279,8 +304,7 @@ class Arm extends Station {
         try {
             let boardPosition = this.getBoardPosition(groups, piece);
 
-            let boardIndex = Math.floor(boardPosition.y / this.boardHeight) * Math.ceil((this.maxX + 1) / this.boardWidth) + Math.floor(boardPosition.x / this.boardWidth);
-            this.logger.debug('Is on board ' + boardIndex + '(x: ' + boardPosition.x + ', y:' + boardPosition.y + ', boardWidth: ' + this.boardWidth + ', maxWidth: ' + this.maxX + ', boardHeight: ' + this.boardHeight + ', maxHeight: ' + this.maxY + ')');
+            let boardIndex = this.getBoardIndexByPosition(boardPosition);
 
             if (boardIndex !== this.selectedBoard) {
                 this.logger.info('Piece not in current board.');
@@ -297,7 +321,7 @@ class Arm extends Station {
                 return;
             }
 
-            this.boardStatistics[this.selectedBoard]++;
+            this.boardStatistics[this.selectedBoard].placed++;
             this.events.dispatch('boardStatistics', this.boardStatistics);
 
             boardPosition.x -= (boardIndex % Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardWidth;

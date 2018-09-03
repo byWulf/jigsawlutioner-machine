@@ -6,7 +6,8 @@ const endpoints = {
     parseimage: async (postData) => {
         let borderData = await Jigsawlutioner.BorderFinder.findPieceBorder(Buffer.from(postData.imageData, 'base64'), {
             threshold: postData.threshold || 225,
-            reduction: postData.reduction || 2
+            reduction: postData.reduction || 2,
+            returnTransparentImage: !!postData.returnTransparentImage
         });
         let sideData = await Jigsawlutioner.SideFinder.findSides(postData.pieceIndex, borderData.path);
 
@@ -18,7 +19,9 @@ const endpoints = {
     },
 
     getplacements: async (postData) => {
-        return Jigsawlutioner.Matcher.getPlacements(postData.pieces);
+        return Jigsawlutioner.Matcher.getPlacements(postData.pieces, null, {
+            ignoreMatches: postData.ignoreMatches
+        });
     }
 };
 
