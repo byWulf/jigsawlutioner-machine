@@ -64,6 +64,8 @@ class Rotator extends Station {
     }
 
     async execute(plate) {
+        this.logger.notice('#' + plate.index + ' - Executing...');
+
         let data = await plate.getData();
 
         if (typeof data.valid === 'undefined' || !data.valid) {

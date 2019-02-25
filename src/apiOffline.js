@@ -1,6 +1,6 @@
 const Jigsawlutioner = require('jigsawlutioner');
 const logger = require('./logger').getInstance('API'.white);
-//logger.setLevel(logger.LEVEL_DEBUG);
+logger.setLevel(logger.LEVEL_NOTICE);
 
 const endpoints = {
     parseimage: async (postData) => {

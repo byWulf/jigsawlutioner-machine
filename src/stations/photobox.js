@@ -7,7 +7,7 @@ class Photobox extends Station {
         super();
 
         this.logger = require('../logger').getInstance('Station'.cyan + ' Photobox'.yellow);
-        //this.logger.setLevel(this.logger.LEVEL_DEBUG);
+        this.logger.setLevel(this.logger.LEVEL_DEBUG);
         this.camera = require('../camera');
         this.sharp = require('sharp');
         this.api = require('../apiOffline'); //TODO: toggle api with apiOffline
@@ -32,6 +32,7 @@ class Photobox extends Station {
 
         this.pieces = [];
         this.piecesLoaded = false;
+        this.isCompareReady = false;
         this.pieceDir = 'pieces/';
         this.imagesDir = 'images/';
 
@@ -86,7 +87,12 @@ class Photobox extends Station {
      * @return {Promise<void>}
      */
     async calculatePlacements(piecePlacementsData) {
+        if (this.isCompareReady) {
+            return;
+        }
+
         const Group = require('../models/Group');
+        this.logger.debug('placements', piecePlacementsData);
         this.groups = [];
         for (let groupIndex in piecePlacementsData) {
             if (!piecePlacementsData.hasOwnProperty(groupIndex)) continue;
@@ -127,6 +133,8 @@ class Photobox extends Station {
 
             this.groups.push(group);
         }
+
+        this.isCompareReady = true;
     }
 
     /**
@@ -240,7 +248,7 @@ class Photobox extends Station {
         if (error.toString() === 'Error: No areas found') {
             plate.setData('empty', true);
         } else {
-            this.logger.error('Error: ' + error, error.stack);
+            this.logger.error('#' + plate.index + ' - Error: ' + error, error.stack);
         }
 
         plate.setData('valid', false);
@@ -263,12 +271,8 @@ class Photobox extends Station {
         piece.files.original = path.basename(this.getImageFilename(index));
 
         let transparentImageFilename = this.getImageFilename(index, 'png', '_transparent');
-        console.log(piece);
         let buffer = Buffer.from(piece.images.transparent.buffer, piece.images.transparent.encoding);
-        console.log(buffer);
-        console.log(transparentImageFilename);
         await this.sharp(buffer).png().toFile(transparentImageFilename);
-        console.log("done");
         piece.files.transparent = path.basename(transparentImageFilename);
 
         return piece;
@@ -312,7 +316,7 @@ class Photobox extends Station {
         const fs = require('fs');
         fs.writeFileSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir + piece.pieceIndex, JSON.stringify(piece));
 
-        this.logger.info('scan complete.');
+        this.logger.info('#' + plate.index + ' - scan complete.');
         plate.setData('piece', piece);
         plate.setData('valid', true);
         plate.setReady();
@@ -344,23 +348,23 @@ class Photobox extends Station {
     /**
      * @param {Plate} plate
      * @param {Piece} piece
+     * @param {object} placements
      * @return {Promise<void>}
      */
-    async handlePlaceMode(plate, piece) {
-        let data = await plate.getData();
-        if (typeof data['placements'] === 'undefined') {
+    async handlePlaceMode(plate, piece, placements) {
+        if (!placements) {
             throw new Error('Placements weren\'t calculated for this place yet.');
         }
 
-        this.logger.debug('before calculate placements');
-        await this.calculatePlacements(data['placements']);
-        this.logger.debug('after calculate placements');
+        this.logger.debug('#' + plate.index + ' - before calculate placements');
+        await this.calculatePlacements(placements);
+        this.logger.debug('#' + plate.index + ' - after calculate placements');
 
         let foundPieceInfo = await this.api.call('findexistingpieceindex', {
             pieces: this.getApiPiecesList(this.pieces),
             piece: this.getApiPiece(piece)
         });
-        this.logger.debug('after api call', foundPieceInfo);
+        this.logger.debug('#' + plate.index + ' - after api call', foundPieceInfo);
 
         if (foundPieceInfo === null) {
             // noinspection ExceptionCaughtLocallyJS
@@ -368,9 +372,6 @@ class Photobox extends Station {
         }
 
         let existingPiece = null;
-        this.logger.debug('BEGIN DEBUG');
-        this.logger.debug(this.pieces);
-        this.logger.debug(foundPieceInfo);
         for (let i = 0; i < this.pieces.length; i++) {
             if (parseInt(this.pieces[i].pieceIndex, 10) === parseInt(foundPieceInfo['pieceIndex'], 10)) {
                 existingPiece = this.pieces[i];
@@ -379,7 +380,6 @@ class Photobox extends Station {
         }
         existingPiece.sides = piece.sides;
         existingPiece.boundingBox = piece.boundingBox;
-        this.logger.debug('after existing piece');
 
         if (foundPieceInfo === null) {
             // noinspection ExceptionCaughtLocallyJS
@@ -402,7 +402,8 @@ class Photobox extends Station {
             await this.loadPieces();
         }
 
-        this.logger.notice('Executing...');
+        this.logger.notice('#' + plate.index + ' - Executing...');
+        let data = await plate.getData();
         plate.setNotReady();
 
         try {
@@ -411,7 +412,7 @@ class Photobox extends Station {
             if (this.modeService.getMode() === this.modeService.MODE_SCAN) {
                 await this.handleScanMode(plate, piece);
             } else if (this.modeService.getMode() === this.modeService.MODE_PLACE) {
-                await this.handlePlaceMode(plate, piece);
+                await this.handlePlaceMode(plate, piece, data['placements']);
             }
         } catch (err) {
             this.handleError(plate, err);

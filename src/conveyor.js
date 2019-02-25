@@ -5,6 +5,7 @@ function Conveyor() {
     this.events = require('./events');
 
     this.plateCount = 0;
+    this.plateIndex = 0;
 
     this.forwardFunction = null;
     this.running = false;
@@ -77,7 +78,7 @@ function Conveyor() {
 
         this.plates = new Array(this.plateCount);
         for (let i = 0; i < this.plates.length; i++) {
-            this.plates[i] = new Plate();
+            this.plates[i] = new Plate(++this.plateIndex);
         }
     };
 
@@ -110,7 +111,7 @@ function Conveyor() {
             this.plates[i] = this.plates[i - 1];
         }
         const Plate = require('./models/Plate');
-        this.plates[0] = new Plate();
+        this.plates[0] = new Plate(++this.plateIndex);
     };
 
     /**

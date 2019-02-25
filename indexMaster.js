@@ -8,7 +8,7 @@ const webserver = require('./src/webserver');
 const projectManager = require('./src/projectManager');
 
 const logger = require('./src/logger').getInstance('Main'.green);
-logger.setGlobalLevel(logger.LEVEL_WARNING);
+logger.setGlobalLevel(logger.LEVEL_DEBUG);
 
 (async () => {
     webserver.start();

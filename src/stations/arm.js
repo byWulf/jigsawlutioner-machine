@@ -179,7 +179,7 @@ class Arm extends Station {
         this.logger.debug('All boards are in sum ' + this.maxX + ' x ' + this.maxY + ' big, which makes ' + boardCount + ' boards');
 
         this.boardStatistics = {};
-        for (let i = 0; i < boardCount; i++) {
+        for (let i = 0; i <= boardCount; i++) {
             this.boardStatistics[i] = {
                 count: 0,
                 placed: 0
@@ -345,7 +345,7 @@ class Arm extends Station {
         /*await this.testPlacement(20, 0);
         return;*/
 
-        this.logger.notice('Executing...');
+        this.logger.notice('#' + plate.index + ' - Executing...');
         this.logger.debug('getting data');
         let data = await plate.getData();
         this.logger.debug('got data.');
