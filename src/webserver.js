@@ -9,12 +9,15 @@ class Webserver {
         this.started = false;
         this.port = 1301;
         this.boardSwitching = false;
+        this.placementState = null;
+        this.placements = null;
 
         this.events = require('./events');
         this.conveyor = require('./conveyor');
         this.modeService = require('./modeService');
         this.projectManager = require('./projectManager');
         this.arm = require('./stations/arm');
+        this.solver = require('./stations/solver');
     }
 
     start() {
@@ -45,6 +48,7 @@ class Webserver {
             this.registerClientProjectManagerEvents(socket);
             this.registerClientStatisticsEvents(socket);
             this.registerClientBoardEvents(socket);
+            this.registerClientSolverEvents(socket);
         });
 
         this.registerConveyorEvents();
@@ -52,6 +56,7 @@ class Webserver {
         this.registerProjectManagerEvents();
         this.registerStatisticsEvents();
         this.registerBoardEvents();
+        this.registerSolverEvents();
 
         this.started = true;
     }
@@ -96,10 +101,6 @@ class Webserver {
 
             this.io.emit('modeSwitched', this.mode);
         });
-
-        this.events.listen('placements', (placements) => {
-            this.io.emit('placements', placements);
-        });
     }
 
     registerClientModeEvents(socket) {
@@ -109,9 +110,37 @@ class Webserver {
             this.logger.debug('Got message: switchMode', mode);
             await this.modeService.switchMode(mode);
         });
+    }
+
+    registerSolverEvents() {
+        this.events.listen('placements', (placements) => {
+            this.placementState = 'fixing';
+            this.placements = placements;
+            this.io.emit('placements', placements);
+        });
+
+        this.events.listen('calculatingPlacements', () => {
+            this.placementState = 'calculating';
+            this.io.emit('calculatingPlacements');
+        })
+    }
+
+    registerClientSolverEvents(socket) {
+        if (this.placementState === 'fixing') {
+            socket.emit('placements', this.placements);
+        }
+        if (this.placementState === 'calculating') {
+            socket.emit('calculatingPlacements');
+        }
 
         socket.on('recalculatePlacements', async (ignoreMatches) => {
-            this.modeService.recalculatePlacements(ignoreMatches);
+            await this.solver.calculatePlacements(ignoreMatches);
+        });
+        socket.on('placementsCorrect', async () => {
+            this.solver.finishPlacementCorrection();
+            this.placementState = null;
+            this.placements = null;
+            this.io.emit('placementsFinished');
         });
     }
 

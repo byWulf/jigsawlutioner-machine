@@ -23,6 +23,7 @@ logger.setGlobalLevel(logger.LEVEL_WARNING);
     logger.info('Setting up conveyor');
     conveyor.setPlateCount(11);
     conveyor.setForwardFunction(brickPi.nextPlate);
+    conveyor.addStation(2, require('./src/stations/solver'));
     conveyor.addStation(3, require('./src/stations/photobox'));
     conveyor.addStation(5, require('./src/stations/rotator'));
     conveyor.addStation(8, require('./src/stations/arm'));

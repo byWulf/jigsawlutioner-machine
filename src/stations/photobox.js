@@ -31,8 +31,6 @@ class Photobox extends Station {
         };
 
         this.pieces = [];
-        this.isCompareReady = false;
-        this.isCompareRunning = false;
         this.piecesLoaded = false;
         this.pieceDir = 'pieces/';
         this.imagesDir = 'images/';
@@ -87,51 +85,7 @@ class Photobox extends Station {
     /**
      * @return {Promise<void>}
      */
-    waitForCompareReady() {
-        return new Promise((resolve) => {
-            let interval = setInterval(() => {
-                if (this.isCompareReady) {
-                    clearInterval(interval);
-                    resolve();
-                }
-            }, 100);
-        });
-    }
-
-    invalidatePlacementsFile() {
-        if (this.fs.existsSync(this.projectManager.getCurrentProjectFolder() + 'placements')) {
-            this.fs.unlinkSync(this.projectManager.getCurrentProjectFolder() + 'placements')
-        }
-    }
-
-    async getPlacementsData() {
-        if (this.fs.existsSync(this.projectManager.getCurrentProjectFolder() + 'placements')) {
-            return JSON.parse(this.fs.readFileSync(this.projectManager.getCurrentProjectFolder() + 'placements', 'utf-8'));
-        }
-
-        let placements = await this.api.call('getplacements', {pieces: this.getApiPiecesList(this.pieces)});
-        this.fs.writeFileSync(this.projectManager.getCurrentProjectFolder() + 'placements', JSON.stringify(placements));
-
-        return placements;
-    }
-
-    /**
-     * @return {Promise<void>}
-     */
-    async calculatePlacements() {
-        if (this.isCompareReady) {
-            return;
-        }
-
-        if (this.isCompareRunning) {
-            await this.waitForCompareReady();
-            return;
-        }
-
-        this.isCompareRunning = true;
-
-        let piecePlacementsData = await this.getPlacementsData();
-
+    async calculatePlacements(piecePlacementsData) {
         const Group = require('../models/Group');
         this.groups = [];
         for (let groupIndex in piecePlacementsData) {
@@ -173,8 +127,6 @@ class Photobox extends Station {
 
             this.groups.push(group);
         }
-
-        this.isCompareReady = true;
     }
 
     /**
@@ -360,8 +312,6 @@ class Photobox extends Station {
         const fs = require('fs');
         fs.writeFileSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir + piece.pieceIndex, JSON.stringify(piece));
 
-        this.invalidatePlacementsFile();
-
         this.logger.info('scan complete.');
         plate.setData('piece', piece);
         plate.setData('valid', true);
@@ -397,8 +347,13 @@ class Photobox extends Station {
      * @return {Promise<void>}
      */
     async handlePlaceMode(plate, piece) {
+        let data = await plate.getData();
+        if (typeof data['placements'] === 'undefined') {
+            throw new Error('Placements weren\'t calculated for this place yet.');
+        }
+
         this.logger.debug('before calculate placements');
-        await this.calculatePlacements();
+        await this.calculatePlacements(data['placements']);
         this.logger.debug('after calculate placements');
 
         let foundPieceInfo = await this.api.call('findexistingpieceindex', {
@@ -431,7 +386,6 @@ class Photobox extends Station {
             throw new Error('Matched piece not found in existing pieces. Straaaange...');
         }
 
-        this.logger.info('compare complete');
         plate.setData('valid', true);
         plate.setData('piece', existingPiece);
         plate.setData('sideOffset', foundPieceInfo['sideOffset']);

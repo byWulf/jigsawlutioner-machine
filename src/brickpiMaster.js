@@ -76,11 +76,7 @@ function BrickPiMaster() {
             await this.init();
         }
 
-        //First all y motors so they dont block anything
-        await Promise.all([this._resetRotatorY()]);
-
-        //Then everything else
-        await Promise.all([this._resetRotatorRotate(), this._resetConveyor(), this._resetPlateZ(), this._resetSorter()]);
+        await Promise.all([this._resetRotatorY(), this._resetRotatorRotate(), this._resetConveyor(), this._resetPlateZ(), this._resetSorter()]);
     };
 
     /**
@@ -88,7 +84,8 @@ function BrickPiMaster() {
      * @private
      */
     this._resetRotatorY = async () => {
-        await this.brickPiHelper.resetMotorEncoder(this.rotatorYMotor.BP, this.rotatorYMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 10, 10000, 30);
+        await this.brickPiHelper.resetMotorEncoder(this.rotatorYMotor.BP, this.rotatorYMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, -50, 10, 10000, 30);
+        await this.rotatorYMotor.setPosition(0);
     };
 
     /**
