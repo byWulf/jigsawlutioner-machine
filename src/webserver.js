@@ -11,6 +11,7 @@ class Webserver {
         this.boardSwitching = false;
         this.placementState = null;
         this.placements = null;
+        this.takeBox = 0;
 
         this.events = require('./events');
         this.conveyor = require('./conveyor');
@@ -207,8 +208,9 @@ class Webserver {
         this.events.listen('boardStatistics', (boardStatistics) => {
             this.io.emit('boardStatistics', boardStatistics);
         });
-        this.events.listen('switchBoardAndBox', () => {
-            this.io.emit('switchBoardAndBox');
+        this.events.listen('switchBoardAndBox', (takeBox) => {
+            this.takeBox = takeBox;
+            this.io.emit('switchBoardAndBox', takeBox);
             this.boardSwitching = true;
         });
         this.events.listen('continueAfterBoardSwitch', () => {
@@ -221,7 +223,7 @@ class Webserver {
         socket.emit('boardSelected', this.arm.getSelectedBoard());
         socket.emit('boardStatistics', this.arm.getBoardStatistics());
         if (this.boardSwitching) {
-            socket.emit('switchBoardAndBox');
+            socket.emit('switchBoardAndBox', this.takeBox);
         }
 
         socket.on('selectNextBoard', async () => {

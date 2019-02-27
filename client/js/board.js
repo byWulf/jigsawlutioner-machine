@@ -15,8 +15,9 @@ class Board {
             this.setStatistics(boardStatistics);
         });
 
-        this.socket.on('switchBoardAndBox', () => {
+        this.socket.on('switchBoardAndBox', (takeBox) => {
             $('#boardSwitchModal').modal('show');
+            $('#boardSwitchModal .boxIndex').text(takeBox);
         });
 
         this.socket.on('boardSwitched', () => {

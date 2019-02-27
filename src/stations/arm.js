@@ -394,7 +394,12 @@ class Arm extends Station {
         this.selectedBoard++;
 
         this.events.dispatch('boardSelected', this.selectedBoard);
-        this.events.dispatch('switchBoardAndBox');
+
+        let takeBox = this.selectedBoard % (this.brickPiMaster.boxCount - 1);
+        if (takeBox === 0) {
+            takeBox = this.brickPiMaster.boxCount - 1;
+        }
+        this.events.dispatch('switchBoardAndBox', takeBox);
         this.conveyor.stop();
 
         this.logger.info('Selected board: ' + this.selectedBoard + ' - waiting for user to replace board and box');
