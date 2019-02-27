@@ -10,7 +10,7 @@ class Photobox extends Station {
         this.logger.setLevel(this.logger.LEVEL_DEBUG);
         this.camera = require('../camera');
         this.sharp = require('sharp');
-        this.api = require('../apiOffline'); //TODO: toggle api with apiOffline
+        this.api = require('../api');
         this.modeService = require('../modeService');
         this.projectManager = require('../projectManager');
         this.events = require('../events');

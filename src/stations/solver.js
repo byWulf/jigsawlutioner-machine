@@ -56,7 +56,7 @@ class Solver extends Station {
     };
 
     async calculatePlacements(ignoreMatches) {
-        const api = require('../apiOffline'); //TODO: toggle api with apiOffline
+        const api = require('../api');
         const photobox = require('./photobox');
         const events = require('../events');
 
