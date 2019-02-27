@@ -10,6 +10,8 @@ function BrickPiMaster() {
     this.conveyorPosition = 0;
     this.modeSwitcherCallbacks = [];
 
+    this.boxCount = 6;
+
     /**
      * @return {Promise<void>}
      */
@@ -76,7 +78,7 @@ function BrickPiMaster() {
             await this.init();
         }
 
-        await Promise.all([this._resetRotatorY(), this._resetRotatorRotate(), this._resetConveyor(), this._resetPlateZ(), this._resetSorter()]);
+        await Promise.all([this._resetRotatorY(), this._resetRotatorRotate(), this._resetConveyor(), this._resetPlateZ(), this._resetBox()]);
     };
 
     /**
@@ -139,8 +141,8 @@ function BrickPiMaster() {
      * @returns {Promise<void>}
      * @private
      */
-    this._resetSorter = async () => {
-        await this.brickPiHelper.resetMotorEncoder(this.sorterMotor.BP, this.sorterMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.FORWARD_LIMIT, 0, 20, 10000, 40);
+    this._resetBox = async () => {
+        await this.brickPiHelper.resetMotorEncoder(this.sorterMotor.BP, this.sorterMotor.port, this.brickPiHelper.RESET_MOTOR_LIMIT.BACKWARD_LIMIT, 0, 20, 10000, 40);
     };
 
     /**
@@ -228,11 +230,11 @@ function BrickPiMaster() {
     };
 
     this.selectSortBox = async (boxIndex) => {
-        if (boxIndex < 0 || boxIndex > 3) {
-            throw new Error('We only have 4 boxes. Please select a box between 0 and 3');
+        if (boxIndex < 0 || boxIndex > this.boxCount - 1) {
+            throw new Error('We only have ' + this.boxCount + ' boxes. Please select a box between 0 and ' + (this.boxCount - 1));
         }
 
-        await this.sorterMotor.setPosition(-950 * boxIndex);
+        await this.sorterMotor.setPosition(950 * boxIndex);
     };
 
     this.moveSortBoxToStandby = async () => {

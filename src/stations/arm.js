@@ -306,28 +306,49 @@ class Arm extends Station {
 
             let boardIndex = this.getBoardIndexByPosition(boardPosition);
 
-            if (boardIndex !== this.selectedBoard) {
+            //Place on board if it is the current board
+            if (boardIndex === this.selectedBoard) {
+                this.boardStatistics[this.selectedBoard].placed++;
+                this.events.dispatch('boardStatistics', this.boardStatistics);
+
+                boardPosition.x -= (boardIndex % Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardWidth;
+                boardPosition.y -= Math.floor(boardIndex / Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardHeight;
+
+                await this.moveToBoard(piece, boardPosition);
+            }
+
+            //Place on current board if it should go there
+            if (boardIndex === this.selectedBoard) {
+                this.boardStatistics[this.selectedBoard].placed++;
+                this.events.dispatch('boardStatistics', this.boardStatistics);
+
+                boardPosition.x -= (boardIndex % Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardWidth;
+                boardPosition.y -= Math.floor(boardIndex / Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardHeight;
+
+                await this.moveToBoard(piece, boardPosition);
+            }
+
+            //Place into box if it is a piece for a future board
+            if (boardIndex > this.selectedBoard) {
                 this.logger.info('Piece not in current board.');
 
-                let boxIndex = boardIndex - this.selectedBoard - 1;
-                if (boxIndex < 0 || boxIndex > 3) {
-                    boxIndex = 3;
+                //By default, place it in the last box
+                let boxIndex = this.brickPiMaster.boxCount - 1;
+
+                //But if it is an upcoming piece (for the next free boxes) place it in the corresponding box (pieces for board 1 go to box 1, for board 4 go to box 4, for board 5 go to box 0...)
+                if (boardIndex - this.selectedBoard < this.brickPiMaster.boxCount) {
+                    boxIndex = boardIndex % (this.brickPiMaster.boxCount - 1);
                 }
 
                 this.logger.debug('Have to move it to box ' + boxIndex + ', because it is on board ' + boardIndex + ' and the current board is ' +  this.selectedBoard);
 
                 await this.movePieceToBox(piece, boxIndex);
-
-                return;
             }
 
-            this.boardStatistics[this.selectedBoard].placed++;
-            this.events.dispatch('boardStatistics', this.boardStatistics);
-
-            boardPosition.x -= (boardIndex % Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardWidth;
-            boardPosition.y -= Math.floor(boardIndex / Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardHeight;
-
-            await this.moveToBoard(piece, boardPosition);
+            //Discard piece if it was for an old board
+            if (boardIndex < this.selectedBoard) {
+                this.logger.info('Got an old piece of board ' + boardIndex + ', which should have been already placed. Discarding...');
+            }
         } catch (e) {
             this.logger.info(e);
             this.setReady();
