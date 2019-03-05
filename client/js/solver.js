@@ -148,6 +148,14 @@ class Solver {
                         transform: 'rotate(' + piece.correctPosition.rotation + 'deg)'
                     });
 
+                    let $rotationIndexContainer = $('<div class="piece indexContainer"></div>');
+                    $rotationIndexContainer.text(piece.pieceIndex);
+                    console.log(piece);
+                    $rotationIndexContainer.css({
+                        left: piece.correctPosition.x * piece.images.transparent.resizeFactor,
+                        top: piece.correctPosition.y * piece.images.transparent.resizeFactor
+                    });
+
                     let xKey = typeof piece.sides[0].startPoint.x !== 'undefined' ? 'x' : 1;
                     let yKey = typeof piece.sides[0].startPoint.y !== 'undefined' ? 'y' : 2;
 
@@ -213,6 +221,7 @@ class Solver {
 
                     $groupContainer.append($rotationButtonContainer);
                     $groupContainer.append($rotationImageContainer);
+                    $groupContainer.append($rotationIndexContainer);
                 }
             }
 

@@ -113,5 +113,8 @@ h1.headline {
 }
 
 .piece.buttonContainer {
+    z-index: 3;
+}
+.piece.indexContainer {
     z-index: 2;
 }
