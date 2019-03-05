@@ -306,17 +306,6 @@ class Arm extends Station {
 
             let boardIndex = this.getBoardIndexByPosition(boardPosition);
 
-            //Place on board if it is the current board
-            if (boardIndex === this.selectedBoard) {
-                this.boardStatistics[this.selectedBoard].placed++;
-                this.events.dispatch('boardStatistics', this.boardStatistics);
-
-                boardPosition.x -= (boardIndex % Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardWidth;
-                boardPosition.y -= Math.floor(boardIndex / Math.ceil((this.maxX + 1) / this.boardWidth)) * this.boardHeight;
-
-                await this.moveToBoard(piece, boardPosition);
-            }
-
             //Place on current board if it should go there
             if (boardIndex === this.selectedBoard) {
                 this.boardStatistics[this.selectedBoard].placed++;
