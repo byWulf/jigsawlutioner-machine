@@ -26,6 +26,9 @@ $('#imageButton').on('click', () => {
 $('#nextButton').on('click', () => {
     socket.emit('nextPlate');
 });
+$('#prevButton').on('click', () => {
+    socket.emit('prevPlate');
+});
 
 socket.on('newImage', (filename) => {
     $('#imageOriginal').attr('src', filename + '.resized.png');

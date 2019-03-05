@@ -28,7 +28,7 @@ let BrickPi;
 let conveyorMotor, conveyorSensor;
 
 async function initBricks() {
-    await brickpi3.set_address(1, 'A778704A514D355934202020FF110722');
+    await brickpi3.set_address(1, '09f95596514d32384e202020ff0f272f');
     await brickpi3.set_address(2, 'DF9E6AC3514D355934202020FF112718');
 
     BrickPi = new brickpi3.BrickPi3(2);
@@ -45,8 +45,17 @@ async function resetConveyor() {
     return new Promise(async (resolve) => {
         await conveyorMotor.setPower(-50);
 
+        let lastHit = null;
         setTimeout(async () => {
             await rpio.poll(conveyorSensor.pin, async () => {
+                if (lastHit === null) {
+                    lastHit = Date.now();
+                    return;
+                }
+                if (lastHit && Date.now() - lastHit < 300) {
+                    return;
+                }
+
                 await conveyorMotor.setPower(0);
                 rpio.poll(conveyorSensor.pin);
 
@@ -54,7 +63,7 @@ async function resetConveyor() {
 
                 resolve();
             });
-        },1000);
+        },100);
     });
 }
 
@@ -108,6 +117,8 @@ function letUserControlMotors() {
 
             await sharp('/var/www' + filename).resize(328*4, 246*4).toFile('/var/www' + filename + '.resized.png');
 
+            console.log(filename);
+
             let left = Math.floor(settings.cropLeft / 100 * 3280);
             let top = Math.floor(settings.cropTop / 100 * 2464);
             let width = Math.floor((settings.cropRight - settings.cropLeft) / 100 * 3280);
@@ -134,6 +145,9 @@ function letUserControlMotors() {
         socket.on('nextPlate', () => {
             nextPlate();
         });
+        socket.on('prevPlate', () => {
+            prevPlate();
+        });
     });
 }
 
@@ -142,9 +156,17 @@ async function nextPlate() {
     let partsPerRotation = 10;
     let partsPerPlate = 6;
 
+    conveyorPosition += (partsPerPlate / partsPerRotation * 360);
+
+    await conveyorMotor.setPosition(-conveyorPosition, 50);
+}
+async function prevPlate() {
+    let partsPerRotation = 10;
+    let partsPerPlate = 6;
+
     conveyorPosition -= (partsPerPlate / partsPerRotation * 360);
 
-    await conveyorMotor.setPosition(conveyorPosition);
+    await conveyorMotor.setPosition(-conveyorPosition, 50);
 }
 
 (async() => {
