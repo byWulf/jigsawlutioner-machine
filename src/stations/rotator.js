@@ -52,6 +52,7 @@ class Rotator extends Station {
 
         let rotatedCenter = this.rotatePoint(500, 500, piece.boundingBox.getCenterX(), piece.boundingBox.getCenterY(), -rotation);
 
+        // noinspection JSSuspiciousNameCombination
         this.logger.debug(' => new bounding box center:', Math.round(rotatedCenter.x) + '/' + Math.round(rotatedCenter.y));
 
         let width = (piece.sides[targetSide].directLength + piece.sides[(targetSide + 2) % 4].directLength) / 2;
@@ -66,15 +67,15 @@ class Rotator extends Station {
     async execute(plate) {
         this.logger.notice('#' + plate.index + ' - Executing...');
 
-        let data = await plate.getData();
-
-        if (typeof data.valid === 'undefined' || !data.valid) {
-            this.logger.debug('Plate empty or not recognized. returning.');
-            this.setReady();
-            return;
-        }
-
         if (this.modeService.getMode() === this.modeService.MODE_PLACE) {
+            let data = await plate.getData();
+
+            if (typeof data.valid === 'undefined' || !data.valid) {
+                this.logger.debug('Plate empty or not recognized. returning.');
+                this.setReady();
+                return;
+            }
+
             let targetSide = (data['piece'].absolutePosition.baseSide + data['sideOffset']) % 4;
 
             this.logger.debug('Side should be up: ', targetSide, " because baseSide is " + data['piece'].absolutePosition.baseSide + " and sideOffset is " + data['sideOffset']);
