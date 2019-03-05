@@ -31,6 +31,8 @@ function Piece() {
      */
     this.images = {};
 
+    this.dimensions = {};
+
     this.fillFromObject = (object) => {
         if (typeof object !== 'object') {
             return;
@@ -42,6 +44,7 @@ function Piece() {
         this.files = object.files || {};
         this.images = object.images || {};
         this.absolutePosition.fillFromObject(object.absolutePosition);
+        this.dimensions = object.dimensions || {};
     };
 }
 
