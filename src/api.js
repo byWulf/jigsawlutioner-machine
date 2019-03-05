@@ -5,7 +5,7 @@ const rp = require('request-promise');
  *
  * @type {boolean}
  */
-const offline = true;
+const offline = false;
 
 let key = null;
 function getKey() {
