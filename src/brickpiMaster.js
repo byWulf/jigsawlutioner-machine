@@ -183,7 +183,7 @@ function BrickPiMaster() {
         if (degree < 0) degree -= extraRotate;
         if (degree > 0) degree += extraRotate;
 
-        await this.rotatorYMotor.setPosition(370);
+        await this.rotatorYMotor.setPosition(270);
         await this.rotatorRotateMotor.setPosition(degree * rotateConversion);
 
         await this.rotatorYMotor.setPosition(0);
