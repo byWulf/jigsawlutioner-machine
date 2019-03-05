@@ -1,10 +1,12 @@
 const spawn = require('child_process').spawn;
+const logger = require('./logger').getInstance('Camera'.white);
 
 function Camera() {
     this.isInitialized = false;
     this.currentCameraResolver = null;
     this.cameraProcess = null;
     this.buffer = null;
+    this.startTime = 0;
 
     this.parameters = [
         '-t', '0',
@@ -73,6 +75,8 @@ function Camera() {
             this.buffer = this.buffer.slice(eoi + 2);
 
             if (this.currentCameraResolver !== null) {
+                logger.debug('Taking image took ' + (Date.now() - this.startTime) + 'ms (buffer length ' + this.buffer.length + ' remaining)');
+
                 this.currentCameraResolver(finishedImageBuffer);
             }
         }
@@ -87,6 +91,7 @@ function Camera() {
                 await this.init();
             }
 
+            this.startTime = Date.now();
             this.currentCameraResolver = resolve;
             this.cameraProcess.kill('SIGUSR1');
         });

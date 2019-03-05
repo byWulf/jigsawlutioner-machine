@@ -41,14 +41,16 @@ function Conveyor() {
         this.logger.debug('Started. Entering loop.');
         while(this.running) {
             this.logger.debug('awaiting move');
+            let moveStartTime = Date.now();
             await this._move();
-            this.logger.debug('moved');
+            this.logger.debug('moved (took ' + (Date.now() - moveStartTime) + 'ms)');
 
             this.logger.debug('waiting for all stations ready');
+            let executeStartTime = Date.now();
             this._unreadyStations();
             this._executeStations();
             await this._waitForAllStationsReady();
-            this.logger.debug('all stations ready');
+            this.logger.debug('all stations ready after ' + (Date.now() - executeStartTime) + 'ms');
         }
 
         this.finished = true;
