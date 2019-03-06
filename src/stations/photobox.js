@@ -14,7 +14,6 @@ class Photobox extends Station {
         this.modeService = require('../modeService');
         this.projectManager = require('../projectManager');
         this.events = require('../events');
-        this.fs = require('fs');
 
         this.index = 0;
 
