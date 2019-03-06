@@ -147,17 +147,18 @@ class Solver {
                         top: piece.correctPosition.y * piece.images.transparent.resizeFactor,
                         transform: 'rotate(' + piece.correctPosition.rotation + 'deg)'
                     });
+                    let xKey = typeof piece.sides[0].startPoint.x !== 'undefined' ? 'x' : 1;
+                    let yKey = typeof piece.sides[0].startPoint.y !== 'undefined' ? 'y' : 2;
 
                     let $rotationIndexContainer = $('<div class="piece indexContainer"></div>');
-                    $rotationIndexContainer.text(piece.pieceIndex);
-                    console.log(piece);
                     $rotationIndexContainer.css({
                         left: piece.correctPosition.x * piece.images.transparent.resizeFactor,
                         top: piece.correctPosition.y * piece.images.transparent.resizeFactor
                     });
+                    /*let $sideContainer = $('<div class="sideIndex pieceIndex"></div>');
+                    $sideContainer.text(piece.pieceIndex);
+                    $rotationIndexContainer.append($sideContainer);*/
 
-                    let xKey = typeof piece.sides[0].startPoint.x !== 'undefined' ? 'x' : 1;
-                    let yKey = typeof piece.sides[0].startPoint.y !== 'undefined' ? 'y' : 2;
 
                     let minX = Math.min(piece.sides[0].startPoint[xKey], piece.sides[1].startPoint[xKey], piece.sides[2].startPoint[xKey], piece.sides[3].startPoint[xKey]);
                     let maxX = Math.max(piece.sides[0].startPoint[xKey], piece.sides[1].startPoint[xKey], piece.sides[2].startPoint[xKey], piece.sides[3].startPoint[xKey]);
@@ -176,6 +177,33 @@ class Solver {
                     });
 
                     $rotationImageContainer.append($img);
+/*
+                    for (let i = 0; i < 4; i++) {
+                        let $sideContainer = $('<div class="sideIndex"></div>');
+                        if (piece.rotation === (3 - i + 1) % 4) {
+                            $sideContainer.addClass('top');
+                        }
+                        $sideContainer.text(i);
+                        $sideContainer.css({
+                            left: ((piece.sides[i].startPoint[xKey] + piece.sides[i].endPoint[xKey]) / 2 * piece.images.transparent.resizeFactor - centerX / 2) * 0.8,
+                            top: ((piece.sides[i].startPoint[yKey] + piece.sides[i].endPoint[yKey]) / 2 * piece.images.transparent.resizeFactor - centerY / 2) * 0.8,
+                        });
+                        $sideContainer.css({
+                            transform: 'rotate(' + -piece.correctPosition.rotation + 'deg)'
+                        })
+                        $rotationImageContainer.append($sideContainer);
+
+                        let $posContainer = $('<div class="sideIndex pos"></div>');
+                        $posContainer.text(Math.round(piece.sides[i].startPoint[xKey]) + '/' + Math.round(piece.sides[i].startPoint[yKey]));
+                        $posContainer.css({
+                            left: ((piece.sides[i].startPoint[xKey]) * piece.images.transparent.resizeFactor - centerX / 2) * 0.9,
+                            top: ((piece.sides[i].startPoint[yKey]) * piece.images.transparent.resizeFactor - centerY / 2) * 0.9,
+                        });
+                        $posContainer.css({
+                            transform: 'rotate(' + -piece.correctPosition.rotation + 'deg)'
+                        })
+                        $rotationImageContainer.append($posContainer);
+                    }*/
 
                     for (let i = 0; i < 4; i++) {
                         let internMiddleX = piece.sides[i].startPoint[xKey] + (piece.sides[i].endPoint[xKey] - piece.sides[i].startPoint[xKey]) / 2;
