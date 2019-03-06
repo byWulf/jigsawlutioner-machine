@@ -34,8 +34,12 @@ server.on('connection', (socket) => {
                 await brickPi.moveToPlatform();
                 break;
 
-            case 'moveToTrash':
-                await brickPi.moveToTrash();
+            case 'moveToBoxRamp':
+                await brickPi.moveToBoxRamp();
+                break;
+
+            case 'moveToBox':
+                await brickPi.moveToBox();
                 break;
 
             case 'moveTo':

@@ -127,10 +127,13 @@ class Arm extends Station {
         ]);
         this.logger.debug("collected and box selected");
 
-        await this.armClient.moveToTrash();
-        this.logger.debug("Moved to trash");
+        await this.armClient.moveToBoxRamp();
+        this.logger.debug("Moved to box ramp");
 
         this.setReady();
+
+        await this.armClient.moveToBox();
+        this.logger.debug("Moved to box");
 
         await this.armClient.standby();
         this.logger.debug("standby");

@@ -139,8 +139,14 @@ function ArmClient() {
     /**
      * @return {Promise<any>}
      */
-    this.moveToTrash = () => {
-        return this._sendCommand('moveToTrash');
+    this.moveToBoxRamp = () => {
+        return this._sendCommand('moveToBoxRamp');
+    };
+    /**
+     * @return {Promise<any>}
+     */
+    this.moveToBox = () => {
+        return this._sendCommand('moveToBox');
     };
 
     /**

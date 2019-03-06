@@ -80,6 +80,7 @@ function BrickPiArm() {
         }
 
         await Promise.all([
+            this.armYMotor.setPosition(0, 100),
             this.plateXMotor.setPosition(0, 100),
             this.armXMotor.setPosition(this.collectConveyorCenter, 100)
         ]);
@@ -120,17 +121,26 @@ function BrickPiArm() {
     /**
      * @return {Promise<void>}
      */
-    this.moveToTrash = async () => {
+    this.moveToBoxRamp = async () => {
         if (!this.isInitialized) {
             await this.init();
         }
 
         await this.armXMotor.setPosition(227, 70);
+    };
+
+    /**
+     * @return {Promise<void>}
+     */
+    this.moveToBox = async () => {
+        if (!this.isInitialized) {
+            await this.init();
+        }
+
         await Promise.all([
            this.armXMotor.setPosition(0, 70),
            this.armYMotor.setPosition(this.collectBottom - 130, 70)
         ]);
-        await this.armYMotor.setPosition(0, 70);
     };
 
     /**
@@ -175,9 +185,6 @@ function BrickPiArm() {
             this.plateXMotor.setPosition(currentEncoder - additionalOffset, 100),
             this.armYMotor.setPosition(this.collectBottom - 90, 70)
         ]);
-
-
-        await this.armYMotor.setPosition(0, 70);
     };
 }
 
