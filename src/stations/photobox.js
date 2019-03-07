@@ -407,6 +407,7 @@ class Photobox extends Station {
 
         try {
             let piece = await this.getPieceFromCamera();
+            this.events.dispatch('pieceScanned', piece);
 
             if (this.modeService.getMode() === this.modeService.MODE_SCAN) {
                 await this.handleScanMode(plate, piece);

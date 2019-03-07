@@ -123,7 +123,11 @@ class Webserver {
         this.events.listen('calculatingPlacements', () => {
             this.placementState = 'calculating';
             this.io.emit('calculatingPlacements');
-        })
+        });
+
+        this.events.listen('pieceScanned', (piece) => {
+            this.io.emit('pieceScanned', piece);
+        });
     }
 
     registerClientSolverEvents(socket) {

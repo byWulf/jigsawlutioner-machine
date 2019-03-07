@@ -12,6 +12,17 @@ html, body {
     background-size: contain;
     background: no-repeat center;
 }
+.fancyPiecePreview {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+}
+.fancyPiecePreview .piece {
+    top: -70px;
+    left: calc(100% + 100px);
+}
 .modal-content {
     border: 0 solid black !important;
     box-shadow: 0 2px 5px 0 rgba(0,0,0,0.25) !important;
