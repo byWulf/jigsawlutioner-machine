@@ -10,11 +10,13 @@ function BrickPiArm() {
     this.conveyorPosition = 0;
 
     this.collectConveyorCenter = 544; //ArmX has to go to this position, so it is exactly in the middle over the conveyor
-    this.collectBottom = -167;  //ArmY has to go down to this position to "press" the piece
+    this.collectBottom = -177;  //ArmY has to go down to this position to "press" the piece
     this.collectToPlatform = 866; //ArmX has to move to this position, so the piece is pulled onto the moving platform
 
     this.cmPerTeeth = 3.2 / 10; //https://www.brickowl.com/catalog/lego-gear-rack-4-3743
     this.cmPerRotation = this.cmPerTeeth * 36; //https://www.brickowl.com/catalog/lego-double-bevel-gear-with-36-teeth-32498
+
+    this.armYMovements = 0;
 
     /**
      * @return {Promise<void>}
@@ -84,6 +86,12 @@ function BrickPiArm() {
             this.plateXMotor.setPosition(0, 100),
             this.armXMotor.setPosition(this.collectConveyorCenter, 100)
         ]);
+
+        this.armYMovements++;
+        if (this.armYMovements === 10) {
+            await this._resetArmY();
+            this.armYMovements = 0;
+        }
     };
 
     /**

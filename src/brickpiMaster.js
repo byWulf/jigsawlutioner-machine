@@ -12,6 +12,8 @@ function BrickPiMaster() {
 
     this.boxCount = 6;
 
+    this.rotatorYMovements = 0;
+
     /**
      * @return {Promise<void>}
      */
@@ -188,6 +190,12 @@ function BrickPiMaster() {
 
         await this.rotatorYMotor.setPosition(0);
         await this.rotatorRotateMotor.setPosition(0);
+
+        this.rotatorYMovements++;
+        if (this.rotatorYMovements === 10) {
+            await this._resetRotatorY();
+            this.rotatorYMovements = 0;
+        }
     };
 
     /**
