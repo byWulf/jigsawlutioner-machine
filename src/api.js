@@ -6,6 +6,8 @@ const rp = require('request-promise');
  * @type {boolean}
  */
 const offline = false;
+//const apiUrl = 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/jigsawlutioner/'; //Lambda
+const apiUrl = 'https://api.bywulf.de/api/v1/'; //EC2
 
 let key = null;
 function getKey() {
@@ -65,9 +67,10 @@ module.exports.call = function(resource, postData) {
         });
     }
 
+    console.log("Posting " + JSON.stringify(postData).length + " bytes to " + apiUrl + resource);
     return rp({
         method: 'POST',
-        uri: 'https://ojaqssmxoi.execute-api.eu-central-1.amazonaws.com/prod/jigsawlutioner/' + resource,
+        uri: apiUrl + resource,
         headers: {
             'x-api-key': getKey()
         },
