@@ -14,6 +14,8 @@ function BrickPiMaster() {
 
     this.rotatorYMovements = 0;
 
+    this.currentSortBoxIndex = 0;
+
     /**
      * @return {Promise<void>}
      */
@@ -242,7 +244,16 @@ function BrickPiMaster() {
             throw new Error('We only have ' + this.boxCount + ' boxes. Please select a box between 0 and ' + (this.boxCount - 1));
         }
 
-        await this.sorterMotor.setPosition(950 * boxIndex);
+        await this.sorterMotor.setPosition(950 * boxIndex + 200);
+        this.currentSortBoxIndex = boxIndex;
+    };
+
+    this.shakeSortBox = async () => {
+        for (let i = 0; i < 3; i++) {
+            await this.sorterMotor.setPosition(950 * this.currentSortBoxIndex + 150);
+            await this.sorterMotor.setPosition(950 * this.currentSortBoxIndex + 250);
+        }
+        await this.sorterMotor.setPosition(950 * this.currentSortBoxIndex + 200);
     };
 
     this.moveSortBoxToStandby = async () => {

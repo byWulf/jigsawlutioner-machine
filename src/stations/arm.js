@@ -26,6 +26,7 @@ class Arm extends Station {
         this.maxY = 0;
         this.selectedBoard = 0;
         this.boardStatistics = {};
+        this.sortBoxCount = {};
 
         this.events.listen('projectSelected', async () => {
             this.groupsOrdered = false;
@@ -135,10 +136,28 @@ class Arm extends Station {
         await this.armClient.moveToBox();
         this.logger.debug("Moved to box");
 
+        await this.increaseBoxCount(boxIndex);
+
         await this.armClient.standby();
         this.logger.debug("standby");
 
         this.armFinished = true;
+    }
+
+    /**
+     * Increases the box count and shakes it for preventing overflow.
+     * @param {int} boxIndex
+     * @returns {Promise<void>}
+     */
+    async increaseBoxCount(boxIndex) {
+        if (typeof this.sortBoxCount[boxIndex] === 'undefined') {
+            this.sortBoxCount[boxIndex] = 0;
+        }
+        this.sortBoxCount[boxIndex]++;
+
+        if (this.sortBoxCount[boxIndex] % 10 === 0) {
+            await this.brickPiMaster.shakeSortBox();
+        }
     }
 
     /**
@@ -396,10 +415,7 @@ class Arm extends Station {
 
         this.logger.info('Selected board: ' + this.selectedBoard + ' - waiting for user to replace board and box');
 
-        await Promise.all([
-            this.brickPiMaster.moveBoardToStandby(),
-            this.brickPiMaster.moveSortBoxToStandby()
-        ]);
+        await this.brickPiMaster.moveBoardToStandby();
     }
 
     continueAfterSwitch() {
