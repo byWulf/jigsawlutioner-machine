@@ -147,3 +147,13 @@ h1.headline {
     color: black;
     font-size: 10px;
 }
+
+.timingStatisticsContainer {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.timingStatisticsContainer .name {
+    text-align: right;
+    font-size: 80%;
+}
