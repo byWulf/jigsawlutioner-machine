@@ -9,11 +9,14 @@ class ModeService {
     }
 
     addEventListeners() {
-        $('#mode-scan').on('change', () => {
-            this.socket.emit('switchMode', 'scan');
-        });
-        $('#mode-place').on('change', () => {
-            this.socket.emit('switchMode', 'place');
+        $('input[name="modeRadio"]').on('change', (event) => {
+            const newValue = $(event.currentTarget).attr('value');
+
+            if (newValue === this.mode) {
+                return;
+            }
+
+            this.socket.emit('switchMode', newValue);
         });
 
         this.socket.on('modeSwitched', (mode) => {
@@ -24,9 +27,7 @@ class ModeService {
     switchMode(mode) {
         this.mode = mode;
 
-        $('input[name="modeRadio"]').val(mode).closest('label').removeClass('active');
-
-        $('#mode-' + mode).closest('label').addClass('active');
+        $('#mode-' + mode).closest('.btn').button('toggle');
 
         $('.hideOnMode-' + mode).hide();
         $('.showOnMode-' + mode).show();
