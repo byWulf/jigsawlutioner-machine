@@ -1,36 +1,45 @@
-require('colors');
+import 'colors';
 
-const conveyor = require('./src/conveyor');
-const brickPi = require('./src/brickpiMaster');
-const armClient = require('./src/armClient');
-const mode = require('./src/modeService');
-const webserver = require('./src/webserver');
-const projectManager = require('./src/projectManager');
+import Webserver from './src/webserver.js';
+import projectManager from './src/projectManager.js';
 
-const logger = require('./src/logger').getInstance('Main'.green);
-logger.setGlobalLevel(logger.LEVEL_DEBUG);
+import Logger from './src/logger.js';
+Logger.setGlobalLevel(Logger.LEVEL_DEBUG);
+const logger = new Logger('Main'.green);
+
+import ControllerRequest from "./src/controllerRequest.js";
+ControllerRequest.port = 3000;
+ControllerRequest.pis = {
+    'pi1': {
+        dns: 'http://jigsawlutioner-master',
+        bricks: {
+            1: {
+                address: 'df9e6ac3514d355934202020ff112718',
+            },
+        },
+    },
+    'pi2': {
+        dns: 'http://jigsawlutioner-arm',
+        bricks: {
+            1: {
+                address: 'A778704A514D355934202020FF110722',
+            },
+        },
+    },
+};
+import Conveyor from "./src/conveyor.js";
+import Scanner from './src/stations/scanner.js';
+import Rotator from './src/stations/rotator.js';
 
 (async () => {
-    webserver.start();
-    projectManager.init();
-
-    await brickPi.init();
-
-    brickPi.onModeSwitch(() => {
-        mode.switchMode(mode.getMode() === 'compare' ? 'scan' : 'compare');
-    });
-
     logger.info('Setting up conveyor');
-    conveyor.setPlateCount(11);
-    conveyor.setForwardFunction(brickPi.nextPlate);
-    conveyor.addStation(2, require('./src/stations/solver'));
-    conveyor.addStation(3, require('./src/stations/photobox'));
-    conveyor.addStation(5, require('./src/stations/rotator'));
-    conveyor.addStation(8, require('./src/stations/arm'));
-
-    logger.info('Connecting to arm');
-    await armClient.connect();
+    const conveyor = new Conveyor(8, 'pi1', 1, 'A', 4, 135);
+    conveyor.addStation(3, new Scanner('pi2', 26, 68, 25, 82, 245, 2));
+    conveyor.addStation(5, new Rotator('pi2', 1, 'A', 1, 'B'));
 
     logger.info('Resetting motors');
-    await Promise.all([brickPi.resetMotors(), armClient.reset()]);
+    await conveyor.resetMotors();
+
+    projectManager.init();
+    const webserver = new Webserver(9999, conveyor);
 })();

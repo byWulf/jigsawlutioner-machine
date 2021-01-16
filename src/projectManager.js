@@ -1,15 +1,15 @@
-require('colors');
+import Logger from "./logger.js";
+const logger = new Logger('ProjectManager'.white);
+logger.setLevel(Logger.LEVEL_INFO);
+
+import fs from 'fs';
+import path from 'path';
+import url from 'url';
 
 class ProjectManager {
     constructor() {
-        this.logger = require('./logger').getInstance('ProjectManager'.white);
-        this.logger.setLevel(this.logger.LEVEL_INFO);
+        this.folder = path.normalize(path.dirname(url.fileURLToPath(import.meta.url)) + '/../projects/');
 
-        this.fs = require('fs');
-        this.events = require('./events');
-        this.fsHelper = require('./fsHelper');
-
-        this.folder = __dirname + '/../projects/';
         this.lastProjectFile = 'lastProject';
 
         this.currentProject = null;
@@ -20,7 +20,7 @@ class ProjectManager {
             this.createProject('Default');
             this.selectProject('Default');
         } else {
-            this.selectProject(this.fs.readFileSync(this.folder + this.lastProjectFile, 'utf-8'));
+            this.selectProject(fs.readFileSync(this.folder + this.lastProjectFile, 'utf-8'));
         }
     }
 
@@ -29,7 +29,7 @@ class ProjectManager {
     }
 
     hasProject(name) {
-        return this.isValidName(name) && this.fs.existsSync(this.folder + name);
+        return this.isValidName(name) && fs.existsSync(this.folder + name);
     }
 
     getProjectCount() {
@@ -38,11 +38,11 @@ class ProjectManager {
 
     getProjectNames() {
         let names = [];
-        this.fs.readdirSync(this.folder).forEach((name) => {
+        fs.readdirSync(this.folder).forEach((name) => {
             if (name === '.' || name === '..') {
                 return;
             }
-            if (this.fs.lstatSync(this.folder + name).isDirectory()) {
+            if (fs.lstatSync(this.folder + name).isDirectory()) {
                 names.push(name)
             }
         });
@@ -59,9 +59,9 @@ class ProjectManager {
             throw new Error('Project "' + name + '" already existing.');
         }
 
-        this.fs.mkdirSync(this.folder + name);
+        fs.mkdirSync(this.folder + name);
 
-        this.events.dispatch('projectCreated', name);
+        process.emit('jigsawlutioner.projectCreated', name);
     }
 
     selectProject(name) {
@@ -73,9 +73,9 @@ class ProjectManager {
         }
 
         this.currentProject = name;
-        this.fs.writeFileSync(this.folder + this.lastProjectFile, name);
+        fs.writeFileSync(this.folder + this.lastProjectFile, name);
 
-        this.events.dispatch('projectSelected', name);
+        process.emit('jigsawlutioner.projectSelected', name);
     }
 
     deleteProject(name) {
@@ -86,9 +86,9 @@ class ProjectManager {
             throw new Error('Cannot delete current project.');
         }
 
-        this.fsHelper.deleteFolderRecursive(this.folder + name);
+        fs.rmdirSync(this.folder + name, { recursive: true });
 
-        this.events.dispatch('projectDeleted', name);
+        process.emit('jigsawlutioner.projectDeleted', name);
     }
 
     getCurrentProjectFolder() {
@@ -100,4 +100,4 @@ class ProjectManager {
     }
 }
 
-module.exports = new ProjectManager();
+export default new ProjectManager();

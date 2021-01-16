@@ -1,85 +1,64 @@
-require('colors');
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
+import Jigsawlutioner from 'jigsawlutioner';
 
-const Station = require('./station');
+import Station from "./station.js";
+import ControllerRequest from "../controllerRequest.js";
 
-class Photobox extends Station {
-    constructor() {
-        super();
+import Piece from "../models/Piece.js";
+import Group from "../models/Group.js";
 
-        this.logger = require('../logger').getInstance('Station'.cyan + ' Photobox'.yellow);
-        this.logger.setLevel(this.logger.LEVEL_DEBUG);
-        this.camera = require('../camera');
-        this.sharp = require('sharp');
-        this.api = require('../api');
-        this.modeService = require('../modeService');
-        this.projectManager = require('../projectManager');
-        this.events = require('../events');
+import projectManager from "../projectManager.js";
 
-        this.index = 0;
+export default class Scanner extends Station {
+    takePhotoApi;
+    index = 0;
+    threshold;
+    reduction;
+    pieces = [];
+    piecesLoaded = false;
+    isCompareReady = false;
+    pieceDir = 'pieces/';
+    imagesDir = 'images/';
 
-        this.settings = {
-            originalImageWidth: 3280,
-            originalImageHeight: 2464,
-            targetSize: 1000,
-            cropLeft: '31',
-            cropRight: '76',
-            cropTop: '27',
-            cropBottom: '83',
-            parseThresh: '245',
-            parseReduction: '2'
-        };
+    constructor(pi, cropLeft, cropRight, cropTop, cropBottom, threshold, reduction) {
+        super('Scanner'.yellow);
 
-        this.pieces = [];
-        this.piecesLoaded = false;
-        this.isCompareReady = false;
-        this.pieceDir = 'pieces/';
-        this.imagesDir = 'images/';
+        this.takePhotoApi = new ControllerRequest(pi, '/scanner/take-photo', {
+            left: cropLeft,
+            right: cropRight,
+            top: cropTop,
+            bottom: cropBottom,
+            width: 1000
+        }, {
+            responseType: 'buffer'
+        });
 
-        this.events.listen('projectSelected', async () => {
+        this.threshold = threshold;
+        this.reduction = reduction;
+
+        process.on('jigsawlutioner.projectSelected', async () => {
             this.createNeededDirs();
 
             this.piecesLoaded = false;
             await this.loadPieces();
         });
-
-        this.createNeededDirs();
-
-        this.loadPieces();
     }
 
     /**
      *
      */
     createNeededDirs() {
-        if (this.projectManager.getCurrentProjectName() === null) return;
+        if (projectManager.getCurrentProjectName() === null) return;
 
-        const fs = require('fs');
-        if (!fs.existsSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir)) {
-            fs.mkdirSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir);
+        if (!fs.existsSync(projectManager.getCurrentProjectFolder() + this.pieceDir)) {
+            fs.mkdirSync(projectManager.getCurrentProjectFolder() + this.pieceDir);
         }
 
-        if (!fs.existsSync(this.projectManager.getCurrentProjectFolder() + this.imagesDir)) {
-            fs.mkdirSync(this.projectManager.getCurrentProjectFolder() + this.imagesDir);
+        if (!fs.existsSync(projectManager.getCurrentProjectFolder() + this.imagesDir)) {
+            fs.mkdirSync(projectManager.getCurrentProjectFolder() + this.imagesDir);
         }
-    }
-
-    /**
-     * @param {Buffer} buffer
-     * @return {Promise<Buffer>}
-     */
-    async cropImageBuffer(buffer) {
-        let left = Math.floor(this.settings.cropLeft / 100 * this.settings.originalImageWidth);
-        let top = Math.floor(this.settings.cropTop / 100 * this.settings.originalImageHeight);
-        let width = Math.floor((this.settings.cropRight - this.settings.cropLeft) / 100 * this.settings.originalImageWidth);
-        let height = Math.floor((this.settings.cropBottom - this.settings.cropTop) / 100 * this.settings.originalImageHeight);
-
-        // noinspection JSUnresolvedFunction
-        return await this.sharp(buffer).extract({
-            left: left,
-            top: top,
-            width: width,
-            height: height
-        }).resize(Math.floor((width / height) * this.settings.targetSize), this.settings.targetSize).toBuffer();
     }
 
     /**
@@ -90,7 +69,6 @@ class Photobox extends Station {
             return;
         }
 
-        const Group = require('../models/Group');
         this.logger.debug('placements', piecePlacementsData);
         this.groups = [];
         for (let groupIndex in piecePlacementsData) {
@@ -140,12 +118,9 @@ class Photobox extends Station {
      * @param {string} filename
      */
     loadPiece(filename) {
-        const fs = require('fs');
-        let content = fs.readFileSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir + filename, 'utf-8');
+        let content = fs.readFileSync(projectManager.getCurrentProjectFolder() + this.pieceDir + filename, 'utf-8');
 
-        const Piece = require('../models/Piece');
-        let piece = new Piece();
-        piece.fillFromObject(JSON.parse(content));
+        const piece = Piece.createFromObject(JSON.parse(content));
 
         this.pieces.push(piece);
 
@@ -164,8 +139,7 @@ class Photobox extends Station {
 
             this.pieces = [];
 
-            const fs = require('fs');
-            fs.readdir(this.projectManager.getCurrentProjectFolder() + this.pieceDir, (err, fileNames) => {
+            fs.readdir(projectManager.getCurrentProjectFolder() + this.pieceDir, (err, fileNames) => {
                 if (err) {
                     reject(err);
                     return;
@@ -174,7 +148,7 @@ class Photobox extends Station {
                 fileNames.forEach((filename) => {
                     this.loadPiece(filename);
                 });
-                this.events.dispatch('piecesScannedChanged', this.pieces.length);
+                process.emit('jigsawlutioner.piecesScannedChanged', this.pieces.length);
 
                 this.piecesLoaded = true;
 
@@ -189,11 +163,8 @@ class Photobox extends Station {
      * @param {string} suffix
      * @return {string}
      */
-    getImageFilename(index, ending, suffix) {
-        return this.projectManager.getCurrentProjectFolder() +
-            this.imagesDir +
-            'piece' + index + (typeof suffix !== 'undefined' ? suffix : '') +
-            '.' + (typeof ending !== 'undefined' ? ending : 'jpg');
+    getImageFilename(index, ending = 'jpg', suffix = '') {
+        return projectManager.getCurrentProjectFolder() + this.imagesDir + 'piece' + index + suffix + '.' + ending;
     }
 
     /**
@@ -203,12 +174,10 @@ class Photobox extends Station {
     async takeImage(index) {
         let filename = this.getImageFilename(index);
 
-        let imageBuffer = await this.camera.takeImage();
-        this.setReady();
+        const response = await this.takePhotoApi.call();
+        const imageBuffer = response.body;
 
-        imageBuffer = await this.cropImageBuffer(imageBuffer);
-        // noinspection JSUnresolvedFunction
-        await this.sharp(imageBuffer).toFile(filename);
+        this.setReady();
 
         return imageBuffer;
     }
@@ -220,13 +189,15 @@ class Photobox extends Station {
      * @return {Promise<object>}
      */
     async parseImage(index, imageBuffer) {
-        let pieceData = await this.api.call('parseimage', {
-            imageData: imageBuffer.toString('base64'),
-            pieceIndex: index,
-            threshold: parseInt(this.settings.parseThresh, 10),
-            reduction: parseInt(this.settings.parseReduction, 10),
+        let borderData = await Jigsawlutioner.BorderFinder.findPieceBorder(imageBuffer, {
+            threshold: this.threshold,
+            reduction: this.reduction,
             returnTransparentImage: true
         });
+        // noinspection JSUnresolvedVariable
+        let sideData = await Jigsawlutioner.SideFinder.findSides(index, borderData.path);
+
+        let pieceData = Jigsawlutioner.PieceHelper.getLimitedPiece(borderData, sideData);
 
         if (typeof pieceData['errorMessage'] !== 'undefined') {
             throw new Error(pieceData['errorMessage']);
@@ -253,6 +224,8 @@ class Photobox extends Station {
         plate.setData('valid', false);
         plate.setData('error', error.toString());
         plate.setReady();
+
+        this.setReady();
     }
 
     /**
@@ -261,17 +234,14 @@ class Photobox extends Station {
      * @return {Piece}
      */
     async createPiece(index, pieceData) {
-        const Piece = require('../models/Piece');
-        let piece = new Piece();
-        piece.fillFromObject(pieceData);
+        let piece = Piece.createFromObject(pieceData);
         piece.pieceIndex = index;
 
-        const path = require("path");
         piece.files.original = path.basename(this.getImageFilename(index));
 
         let transparentImageFilename = this.getImageFilename(index, 'png', '_transparent');
         let buffer = Buffer.from(piece.images.transparent.buffer, piece.images.transparent.encoding);
-        await this.sharp(buffer).png().toFile(transparentImageFilename);
+        await sharp(buffer).png().toFile(transparentImageFilename);
         piece.files.transparent = path.basename(transparentImageFilename);
 
         return piece;
@@ -286,7 +256,7 @@ class Photobox extends Station {
         let imageBuffer = await this.takeImage(currentIndex);
         let pieceData = await this.parseImage(currentIndex, imageBuffer);
 
-        return await this.createPiece(currentIndex, pieceData);
+        return this.createPiece(currentIndex, pieceData);
     }
 
     /**
@@ -296,11 +266,10 @@ class Photobox extends Station {
     async getPieceFromFile(filename) {
         let currentIndex = this.index++;
 
-        // noinspection JSUnresolvedFunction
-        let imageBuffer = await this.sharp(filename).toBuffer();
+        let imageBuffer = await sharp(filename).toBuffer();
         let pieceData = await this.parseImage(currentIndex, imageBuffer);
 
-        return await this.createPiece(currentIndex, pieceData);
+        return this.createPiece(currentIndex, pieceData);
     }
 
     /**
@@ -310,10 +279,9 @@ class Photobox extends Station {
      */
     async handleScanMode(plate, piece) {
         this.pieces.push(piece);
-        this.events.dispatch('piecesScannedChanged', this.pieces.length);
+        process.emit('jigsawlutioner.piecesScannedChanged', this.pieces.length);
 
-        const fs = require('fs');
-        fs.writeFileSync(this.projectManager.getCurrentProjectFolder() + this.pieceDir + piece.pieceIndex, JSON.stringify(piece));
+        fs.writeFileSync(projectManager.getCurrentProjectFolder() + this.pieceDir + piece.pieceIndex, JSON.stringify(piece));
 
         this.logger.info('#' + plate.index + ' - scan complete.');
         plate.setData('piece', piece);
@@ -359,14 +327,10 @@ class Photobox extends Station {
         await this.calculatePlacements(placements);
         this.logger.debug('#' + plate.index + ' - after calculate placements');
 
-        let foundPieceInfo = await this.api.call('findexistingpieceindex', {
-            pieces: this.getApiPiecesList(this.pieces),
-            piece: this.getApiPiece(piece)
-        });
+        let foundPieceInfo = await Jigsawlutioner.Matcher.findExistingPieceIndex(this.getApiPiecesList(this.pieces), this.getApiPiece(piece));
         this.logger.debug('#' + plate.index + ' - after api call', foundPieceInfo);
 
         if (foundPieceInfo === null) {
-            // noinspection ExceptionCaughtLocallyJS
             throw new Error('Couldn\'t match this piece with an existing piece.');
         }
 
@@ -377,13 +341,14 @@ class Photobox extends Station {
                 break;
             }
         }
+
+        if (existingPiece === null) {
+            throw new Error('Matched piece not found in existing pieces. Straaaange...');
+        }
+
         existingPiece.sides = piece.sides;
         existingPiece.boundingBox = piece.boundingBox;
 
-        if (foundPieceInfo === null) {
-            // noinspection ExceptionCaughtLocallyJS
-            throw new Error('Matched piece not found in existing pieces. Straaaange...');
-        }
 
         plate.setData('valid', true);
         plate.setData('piece', existingPiece);
@@ -407,17 +372,18 @@ class Photobox extends Station {
 
         try {
             let piece = await this.getPieceFromCamera();
-            this.events.dispatch('pieceScanned', piece);
+            process.emit('jigsawlutioner.pieceScanned', piece);
 
-            if (this.modeService.getMode() === this.modeService.MODE_SCAN) {
+            if (this.isScanMode()) {
                 await this.handleScanMode(plate, piece);
-            } else if (this.modeService.getMode() === this.modeService.MODE_PLACE) {
+            } else if (this.isPlaceMode()) {
                 await this.handlePlaceMode(plate, piece, data['placements']);
+            } else {
+                this.logger.error('Unknown mode.');
+                this.setReady();
             }
         } catch (err) {
             this.handleError(plate, err);
         }
     }
 }
-
-module.exports = new Photobox();

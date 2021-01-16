@@ -1,6 +1,17 @@
-class Station {
-    constructor() {
-        this.ready = true;
+import Logger from "../logger.js";
+import modeService from "../modeService.js";
+
+export default class Station {
+    ready = true;
+    logger;
+    conveyor;
+
+    constructor(colorizedName) {
+        this.logger = new Logger('Station'.cyan + ' ' + colorizedName);
+    }
+
+    setConveyor(conveyor) {
+        this.conveyor = conveyor;
     }
 
     /**
@@ -9,6 +20,14 @@ class Station {
      */
     async execute(plate) {
         throw new Error('Must implement execute method.');
+    }
+
+    isScanMode() {
+        return modeService.getMode() === modeService.MODE_SCAN;
+    }
+
+    isPlaceMode() {
+        return modeService.getMode() === modeService.MODE_PLACE;
     }
 
     setReady() {
@@ -22,6 +41,8 @@ class Station {
     isReady() {
         return this.ready;
     }
-}
 
-module.exports = Station;
+    async reset() {
+        // Can be implemented by the stations to reset their motors
+    }
+}

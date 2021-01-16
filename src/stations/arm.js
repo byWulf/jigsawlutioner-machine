@@ -1,5 +1,7 @@
 require('colors');
 
+//TODO: Rework
+
 const Station = require('./station');
 
 class Arm extends Station {

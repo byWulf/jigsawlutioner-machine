@@ -1,83 +1,78 @@
-require('colors');
+import ControllerRequest from "./controllerRequest.js";
+import Station from "./stations/station.js";
+import Logger from "./logger.js";
+const logger = new Logger('Conveyor'.magenta);
 
-function Conveyor() {
-    this.logger = require('./logger').getInstance('Conveyor'.magenta);
-    this.events = require('./events');
+import Plate from "./models/Plate.js";
 
-    this.plateCount = 0;
-    this.plateIndex = 0;
+export default class Conveyor {
+    resetApi;
+    moveToNextPlateApi;
 
-    this.forwardFunction = null;
-    this.running = false;
-    this.finished = true;
+    plateCount = 0;
+    plateIndex = 0;
 
-    this.events.listen('projectSelected', () => {
-        this._initializePlates();
-    });
+    running = false;
+    finished = true;
 
-    this.setPlateCount = (plateCount) => {
+    constructor(plateCount, pi, motorBrick, motorPort, sensorPort, additionalForward) {
         this.plateCount = plateCount;
-        this._initializeStations();
-        this._initializePlates();
-    };
 
-    this.setForwardFunction = (forwardFunction) => {
-        this.forwardFunction = forwardFunction;
-    };
+        this.resetApi = new ControllerRequest(pi, '/conveyor/reset', {additionalForward: additionalForward})
+            .addMotor('motor', motorBrick, motorPort)
+            .addSensor('sensor', sensorPort);
+
+        this.moveToNextPlateApi = new ControllerRequest(pi, '/conveyor/move-to-next-plate')
+            .addMotor('motor', motorBrick, motorPort);
+
+        process.on('jigsawlutioner.projectSelected', this.initializePlates);
+
+        this.initializeStations();
+        this.initializePlates();
+    }
 
     /**
      * @return {Promise<void>}
      */
-    this.start = async () => {
-        this.logger.debug('Starting');
+    async start() {
+        logger.debug('Starting');
         if (!this.finished) {
-            this.logger.debug('- already running. Nothing to do');
+            logger.debug('- already running. Nothing to do');
             return;
         }
 
         this.running = true;
         this.finished = false;
-        this.events.dispatch('conveyorStarted');
-        this.logger.debug('Started. Entering loop.');
+        process.emit('jigsawlutioner.conveyorStarted');
+        logger.debug('Started. Entering loop.');
         while(this.running) {
-            this.logger.debug('awaiting move');
+            logger.debug('awaiting move');
             let moveStartTime = Date.now();
-            await this._move();
-            this.logger.debug('moved (took ' + (Date.now() - moveStartTime) + 'ms)');
+            await this.move();
+            logger.debug('moved (took ' + (Date.now() - moveStartTime) + 'ms)');
 
-            this.logger.debug('waiting for all stations ready');
+            logger.debug('waiting for all stations ready');
             let executeStartTime = Date.now();
-            this._unreadyStations();
-            this._executeStations();
-            await this._waitForAllStationsReady();
-            this.logger.debug('all stations ready after ' + (Date.now() - executeStartTime) + 'ms');
+            this.unreadyStations();
+            this.executeStations();
+            await this.waitForAllStationsReady();
+            logger.debug('all stations ready after ' + (Date.now() - executeStartTime) + 'ms');
         }
 
         this.finished = true;
-        this.events.dispatch('conveyorStopped');
+        process.emit('jigsawlutioner.conveyorStopped');
     };
 
-    /**
-     *
-     */
-    this.stop = () => {
+    stop() {
         this.running = false;
-        this.events.dispatch('stoppingConveyor');
+        process.emit('jigsawlutioner.stoppingConveyor');
     };
 
-    /**
-     * @private
-     */
-    this._initializeStations = () => {
+    initializeStations() {
         this.stations = new Array(this.plateCount);
     };
 
-    /**
-     * @private
-     */
-    this._initializePlates = () => {
-        const Plate = require('./models/Plate');
-
+    initializePlates() {
         this.plates = new Array(this.plateCount);
         for (let i = 0; i < this.plates.length; i++) {
             this.plates[i] = new Plate(++this.plateIndex);
@@ -88,52 +83,38 @@ function Conveyor() {
      * @param {int} index
      * @param {Station} station
      */
-    this.addStation = (index, station) => {
-        const Station = require('./stations/station');
+    addStation(index, station) {
         if (!(station instanceof Station)) {
             throw new Error('Station must be an instance of Station');
         }
 
+        station.setConveyor(this);
         this.stations[index] = station;
     };
 
     /**
      * @return {Promise<void>}
-     * @private
      */
-    this._move = async () =>{
-        this.logger.debug('mode: typeof forwardFunction', typeof this.forwardFunction);
-        if (typeof this.forwardFunction === 'function') {
-            this.logger.debug('mode: starting forwardFunction');
-            await this.forwardFunction();
-            this.logger.debug('mode: forwardFunction finished');
-        }
+    async move() {
+        await this.moveToNextPlateApi.call();
 
         for (let i = this.plates.length - 1; i > 0; i--) {
             this.plates[i] = this.plates[i - 1];
         }
-        const Plate = require('./models/Plate');
         this.plates[0] = new Plate(++this.plateIndex);
     };
 
-    /**
-     * @private
-     */
-    this._unreadyStations = () => {
+    unreadyStations() {
         for (let i = 0; i < this.stations.length; i++) {
-            if (this._isStation(i)) {
+            if (this.isStation(i)) {
                 this.stations[i].setNotReady();
             }
         }
     };
 
-    /**
-     * @private
-     */
-    this._executeStations = () => {
+    executeStations() {
         for (let i = 0; i < this.stations.length; i++) {
-            if (this._isStation(i)) {
-                // noinspection JSIgnoredPromiseFromCall
+            if (this.isStation(i)) {
                 this.stations[i].execute(this.plates[i]);
             }
         }
@@ -142,35 +123,39 @@ function Conveyor() {
     /**
      * @param {int} index
      * @return {boolean}
-     * @private
      */
-    this._isStation = (index) => {
-        const Station = require('./stations/station');
-        return this.stations[index] instanceof Station;
+    isStation(index) {
+        return !!this.stations[index];
     };
 
     /**
      * @return {Promise<void>}
-     * @private
      */
-    this._waitForAllStationsReady = () => {
+    waitForAllStationsReady() {
         return new Promise((resolve) => {
             let interval = setInterval(() => {
-                let allReady = true;
                 for (let i = 0; i < this.stations.length; i++) {
-                    if (this._isStation(i) && !this.stations[i].isReady()) {
-                        allReady = false;
-                        break;
+                    if (this.isStation(i) && !this.stations[i].isReady()) {
+                        return;
                     }
                 }
 
-                if (allReady) {
-                    clearInterval(interval);
-                    resolve();
-                }
-            }, 100);
+                clearInterval(interval);
+                resolve();
+            }, 25);
         });
     };
-}
 
-module.exports = new Conveyor();
+    resetMotors() {
+        const promises = [];
+        promises.push(this.resetApi.call());
+
+        for (let i = 0; i < this.stations.length; i++) {
+            if (this.isStation(i)) {
+                promises.push(this.stations[i].reset());
+            }
+        }
+
+        return Promise.all(promises);
+    }
+}

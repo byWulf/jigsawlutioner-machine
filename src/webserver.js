@@ -1,55 +1,57 @@
-require('colors');
+import Logger from "./logger.js";
+const logger = new Logger('Webserver'.green);
+logger.setLevel(Logger.LEVEL_INFO);
 
-class Webserver {
-    constructor() {
-        this.logger = require('./logger').getInstance('Webserver'.green);
-        this.logger.setLevel(this.logger.LEVEL_INFO);
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
 
-        this.express = require('express');
-        this.started = false;
-        this.port = 1301;
-        this.boardSwitching = false;
-        this.placementState = null;
-        this.placements = null;
-        this.takeBox = 0;
+import modeService from "./modeService.js";
+import projectManager from "./projectManager.js";
 
-        this.events = require('./events');
-        this.conveyor = require('./conveyor');
-        this.modeService = require('./modeService');
-        this.projectManager = require('./projectManager');
-        this.arm = require('./stations/arm');
-        this.solver = require('./stations/solver');
-    }
+export default class Webserver {
+    conveyor;
+    port;
 
-    start() {
-        this.app = this.express();
-        this.http = require('http').Server(this.app);
+    conveyorState = false;
+    boardSwitching = false;
+    takeBox = 0;
 
-        this.io = require('socket.io')(this.http);
+    app;
+    http;
+    io;
 
-        this.app.use(this.express.static('client'));
+    constructor(port, conveyor) {
+        this.port = port;
+        this.conveyor = conveyor;
 
-        this.app.use('/jquery', this.express.static('node_modules/jquery/dist'));
-        this.app.use('/bootstrap', this.express.static('node_modules/bootstrap/dist'));
-        this.app.use('/fontawesome', this.express.static('node_modules/font-awesome'));
-        this.app.use('/tether', this.express.static('node_modules/tether/dist'));
-        this.app.use('/popper', this.express.static('node_modules/popper.js/dist/umd'));
-        this.app.use('/animate.css', this.express.static('node_modules/animate.css'));
-        this.app.use('/projects', this.express.static('projects'));
+        this.app = express();
+        this.http = http.createServer(this.app);
+
+        this.io = new Server(this.http);
+
+        this.app.use(express.static('client'));
+
+        this.app.use('/jquery', express.static('node_modules/jquery/dist'));
+        this.app.use('/bootstrap', express.static('node_modules/bootstrap/dist'));
+        this.app.use('/fontawesome', express.static('node_modules/font-awesome'));
+        this.app.use('/tether', express.static('node_modules/tether/dist'));
+        this.app.use('/popper', express.static('node_modules/popper.js/dist/umd'));
+        this.app.use('/animate.css', express.static('node_modules/animate.css'));
+        this.app.use('/projects', express.static('projects'));
 
         this.http.listen(this.port, () => {
-            this.logger.info('Webserver started on port ' + this.port);
+            logger.info('Webserver started on port ' + this.port);
         });
 
         this.io.on('connection', (socket) => {
-            this.logger.debug('New connection ' + socket.id);
+            logger.debug('New connection ' + socket.id);
 
             this.registerClientConveyorEvents(socket);
             this.registerClientModeEvents(socket);
             this.registerClientProjectManagerEvents(socket);
             this.registerClientStatisticsEvents(socket);
             this.registerClientBoardEvents(socket);
-            this.registerClientSolverEvents(socket);
         });
 
         this.registerConveyorEvents();
@@ -57,25 +59,22 @@ class Webserver {
         this.registerProjectManagerEvents();
         this.registerStatisticsEvents();
         this.registerBoardEvents();
-        this.registerSolverEvents();
-
-        this.started = true;
     }
 
     registerConveyorEvents() {
-        this.events.listen('conveyorStarted', () => {
+        process.on('jigsawlutioner.conveyorStarted', () => {
             this.conveyorState = 'running';
 
             this.io.emit('conveyorState', this.conveyorState);
         });
 
-        this.events.listen('conveyorStopped', () => {
+        process.on('jigsawlutioner.conveyorStopped', () => {
             this.conveyorState = 'stopped';
 
             this.io.emit('conveyorState', this.conveyorState);
         });
 
-        this.events.listen('stoppingConveyor', () => {
+        process.on('jigsawlutioner.stoppingConveyor', () => {
             this.conveyorState = 'stopping';
 
             this.io.emit('conveyorState', this.conveyorState);
@@ -86,18 +85,18 @@ class Webserver {
         socket.emit('conveyorState', this.conveyorState || 'stopped');
 
         socket.on('startConveyor', () => {
-            this.logger.debug('Got message: startConveyor');
+            logger.debug('Got message: startConveyor');
             this.conveyor.start();
         });
 
         socket.on('stopConveyor', () => {
-            this.logger.debug('Got message: stopConveyor');
+            logger.debug('Got message: stopConveyor');
             this.conveyor.stop();
         });
     }
 
     registerModeEvents() {
-        this.events.listen('modeSwitched', (mode) => {
+        process.on('jigsawlutioner.modeSwitched', (mode) => {
             this.mode = mode;
 
             this.io.emit('modeSwitched', this.mode);
@@ -105,57 +104,21 @@ class Webserver {
     }
 
     registerClientModeEvents(socket) {
-        socket.emit('modeSwitched', this.mode || this.modeService.MODE_SCAN);
+        socket.emit('modeSwitched', this.mode || modeService.MODE_SCAN);
 
         socket.on('switchMode', async (mode) => {
-            this.logger.debug('Got message: switchMode', mode);
-            await this.modeService.switchMode(mode);
-        });
-    }
-
-    registerSolverEvents() {
-        this.events.listen('placements', (placements) => {
-            this.placementState = 'fixing';
-            this.placements = placements;
-            this.io.emit('placements', placements);
-        });
-
-        this.events.listen('calculatingPlacements', () => {
-            this.placementState = 'calculating';
-            this.io.emit('calculatingPlacements');
-        });
-
-        this.events.listen('pieceScanned', (piece) => {
-            this.io.emit('pieceScanned', piece);
-        });
-    }
-
-    registerClientSolverEvents(socket) {
-        if (this.placementState === 'fixing') {
-            socket.emit('placements', this.placements);
-        }
-        if (this.placementState === 'calculating') {
-            socket.emit('calculatingPlacements');
-        }
-
-        socket.on('recalculatePlacements', async (ignoreMatches) => {
-            await this.solver.calculatePlacements(ignoreMatches);
-        });
-        socket.on('placementsCorrect', async () => {
-            this.solver.finishPlacementCorrection();
-            this.placementState = null;
-            this.placements = null;
-            this.io.emit('placementsFinished');
+            logger.debug('Got message: switchMode', mode);
+            await modeService.switchMode(mode);
         });
     }
 
     registerProjectManagerEvents() {
-        this.events.listen('projectSelected', (name) => {
+        process.on('jigsawlutioner.projectSelected', (name) => {
             this.projectName = name;
 
             this.io.emit('projectSelected', this.projectName);
         });
-        this.events.listen('projectDeleted', (name) => {
+        process.on('jigsawlutioner.projectDeleted', (name) => {
             this.io.emit('projectDeleted', name);
         });
     }
@@ -164,37 +127,37 @@ class Webserver {
         socket.emit('projectSelected', this.projectName || '');
 
         socket.on('getProjects', () => {
-            this.logger.debug('Got message: getProjects');
-            socket.emit('projectList', this.projectManager.getProjectNames());
+            logger.debug('Got message: getProjects');
+            socket.emit('projectList', projectManager.getProjectNames());
         });
 
         socket.on('createProject', (name) => {
-            this.logger.debug('Got message: createProject', name);
+            logger.debug('Got message: createProject', name);
             try {
-                this.projectManager.createProject(name);
-                this.projectManager.selectProject(name);
+                projectManager.createProject(name);
+                projectManager.selectProject(name);
             } catch (e) {
                 socket.emit('createProjectError', e.toString());
             }
         });
 
         socket.on('deleteProject', (name) => {
-            this.logger.debug('Got message: deleteProject', name);
+            logger.debug('Got message: deleteProject', name);
             try {
-                this.projectManager.deleteProject(name);
+                projectManager.deleteProject(name);
             } catch(e) {}
         });
 
         socket.on('loadProject', (name) => {
-            this.logger.debug('Got message: loadProject', name);
+            logger.debug('Got message: loadProject', name);
             try {
-                this.projectManager.selectProject(name);
+                projectManager.selectProject(name);
             } catch(e) {}
         })
     }
 
     registerStatisticsEvents() {
-        this.events.listen('piecesScannedChanged', (piecesCount) => {
+        process.on('jigsawlutioner.piecesScannedChanged', (piecesCount) => {
             this.piecesScanned = piecesCount;
 
             this.io.emit('piecesScannedChanged', piecesCount);
@@ -206,39 +169,39 @@ class Webserver {
     }
 
     registerBoardEvents() {
-        this.events.listen('boardSelected', (boardIndex) => {
+        process.on('jigsawlutioner.boardSelected', (boardIndex) => {
             this.io.emit('boardSelected', boardIndex);
         });
-        this.events.listen('boardStatistics', (boardStatistics) => {
+        process.on('jigsawlutioner.boardStatistics', (boardStatistics) => {
             this.io.emit('boardStatistics', boardStatistics);
         });
-        this.events.listen('switchBoardAndBox', (takeBox) => {
+        process.on('jigsawlutioner.switchBoardAndBox', (takeBox) => {
             this.takeBox = takeBox;
             this.io.emit('switchBoardAndBox', takeBox);
             this.boardSwitching = true;
         });
-        this.events.listen('continueAfterBoardSwitch', () => {
+        process.on('jigsawlutioner.continueAfterBoardSwitch', () => {
             this.io.emit('boardSwitched');
             this.boardSwitching = false;
         });
     }
 
     registerClientBoardEvents(socket) {
-        socket.emit('boardSelected', this.arm.getSelectedBoard());
-        socket.emit('boardStatistics', this.arm.getBoardStatistics());
-        if (this.boardSwitching) {
-            socket.emit('switchBoardAndBox', this.takeBox);
-        }
+        //TODO adjust when arm is built
 
-        socket.on('selectNextBoard', async () => {
-            this.logger.debug('Got message: nextBoard');
-            await this.arm.selectNextBoard();
-        });
-        socket.on('boardSwitched', () => {
-            this.logger.debug('Got message: boardSwitched');
-            this.arm.continueAfterSwitch();
-        });
+        // socket.emit('boardSelected', this.arm.getSelectedBoard());
+        // socket.emit('boardStatistics', this.arm.getBoardStatistics());
+        // if (this.boardSwitching) {
+        //     socket.emit('switchBoardAndBox', this.takeBox);
+        // }
+        //
+        // socket.on('selectNextBoard', async () => {
+        //     logger.debug('Got message: nextBoard');
+        //     await this.arm.selectNextBoard();
+        // });
+        // socket.on('boardSwitched', () => {
+        //     logger.debug('Got message: boardSwitched');
+        //     this.arm.continueAfterSwitch();
+        // });
     }
 }
-
-module.exports = new Webserver();

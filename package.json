@@ -2,9 +2,13 @@
   "name": "jigsawlutioner-machine",
   "version": "0.3.0",
   "description": "",
+  "type": "module",
   "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
   "scripts": {
-    "test": "mocha --recursive"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -17,23 +21,18 @@
   },
   "homepage": "https://github.com/byWulf/jigsawlutioner-machine#readme",
   "dependencies": {
-    "jigsawlutioner": "git+ssh://git@github.com:byWulf/jigsawlutioner.git",
-    "@mapbox/shelf-pack": "^3.2",
-    "animate.css": "^3.5.2",
-    "bootstrap": "^4.0",
-    "bootstrap-notify": "^3.1.3",
-    "colors": "^1.4",
-    "express": "^4.17",
+    "@mapbox/shelf-pack": "^3.2.0",
+    "animate.css": "^4.1.1",
+    "bootstrap": "^4.5.3",
+    "colors": "^1.4.0",
+    "dateformat": "^4.4.1",
+    "express": "^4.17.1",
     "font-awesome": "^4.7.0",
-    "jquery": "^3.5",
-    "paper-jsdom": "^0.12",
-    "popper.js": "^1.12.3",
-    "got": "^11.8",
-    "socket.io": "^2.0.3",
-    "tether": "^1.4.0"
-  },
-  "devDependencies": {
-    "mocha": "^5.0.1",
-    "sinon": "^4.3.0"
+    "got": "^11.8.1",
+    "jigsawlutioner": "git+ssh://git@github.com/byWulf/jigsawlutioner.git",
+    "jquery": "^3.5.1",
+    "sharp": "^0.27.0",
+    "socket.io": "^3.1.0",
+    "tether": "^1.4.7"
   }
 }

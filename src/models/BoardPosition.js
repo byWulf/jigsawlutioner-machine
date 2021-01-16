@@ -1,13 +1,16 @@
-function BoardPosition() {
+export default class BoardPosition {
     /**
      * @type {int}
      */
-    this.x = 0;
+    x = 0;
 
     /**
      * @type {int}
      */
-    this.y = 0;
+    y = 0;
+
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
 }
-
-module.exports = BoardPosition;

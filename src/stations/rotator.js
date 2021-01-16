@@ -1,15 +1,20 @@
-require('colors');
+import Station from "./station.js";
+import ControllerRequest from "../controllerRequest.js";
 
-const Station = require('./station');
+export default class Rotator extends Station {
+    resetApi;
 
-class Rotator extends Station {
-    constructor() {
-        super();
+    rotateApi;
 
-        this.logger = require('../logger').getInstance('Station'.cyan + ' Rotator'.green);
-        //this.logger.setLevel(this.logger.LEVEL_DEBUG);
-        this.brickPi = require('../brickpiMaster');
-        this.modeService = require('../modeService');
+    constructor(pi, pushMotorBrick, pushMotorPort, rotateMotorBrick, rotateMotorPort) {
+        super('Rotator'.green);
+
+        this.resetApi = new ControllerRequest(pi, '/rotator/reset')
+            .addMotor('pushMotor', pushMotorBrick, pushMotorPort);
+
+        this.rotateApi = new ControllerRequest(pi, '/rotator/rotate')
+            .addMotor('pushMotor', pushMotorBrick, pushMotorPort)
+            .addMotor('rotateMotor', rotateMotorBrick, rotateMotorPort);
     }
 
     /**
@@ -52,7 +57,6 @@ class Rotator extends Station {
 
         let rotatedCenter = this.rotatePoint(500, 500, piece.boundingBox.getCenterX(), piece.boundingBox.getCenterY(), -rotation);
 
-        // noinspection JSSuspiciousNameCombination
         this.logger.debug(' => new bounding box center:', Math.round(rotatedCenter.x) + '/' + Math.round(rotatedCenter.y));
 
         let width = (piece.sides[targetSide].directLength + piece.sides[(targetSide + 2) % 4].directLength) / 2;
@@ -67,32 +71,41 @@ class Rotator extends Station {
     async execute(plate) {
         this.logger.notice('#' + plate.index + ' - Executing...');
 
-        if (this.modeService.getMode() === this.modeService.MODE_PLACE) {
-            let data = await plate.getData();
-
-            if (typeof data.valid === 'undefined' || !data.valid) {
-                this.logger.debug('Plate empty or not recognized. returning.');
-                this.setReady();
-                return;
-            }
-
-            let targetSide = (data['piece'].absolutePosition.baseSide + data['sideOffset']) % 4;
-
-            this.logger.debug('Side should be up: ', targetSide, " because baseSide is " + data['piece'].absolutePosition.baseSide + " and sideOffset is " + data['sideOffset']);
-            for (let i = 0; i < 4; i++) {
-                this.logger.debug('points of side ' + i, data['piece'].sides[i]['startPoint'], data['piece'].sides[i]['endPoint']);
-            }
-
-            let rotation = this.getRotation(data['piece'], targetSide);
-            this.logger.info('Rotating piece ' + rotation + ' degree');
-            await this.brickPi.rotatePiece(rotation);
-            data['piece'].absolutePosition.baseSide = (data['piece'].absolutePosition.baseSide + data['sideOffset']) % 4;
-
-            this.recalculateBoundingBox(data['piece'], targetSide, rotation);
+        if (!this.isPlaceMode()) {
+            this.logger.debug('Not in placement mode. returning.')
+            this.setReady();
+            return;
         }
+
+        let data = await plate.getData();
+
+        // noinspection JSUnresolvedVariable
+        if (typeof data.valid === 'undefined' || !data.valid) {
+            this.logger.debug('Plate empty or not recognized. returning.');
+            this.setReady();
+            return;
+        }
+
+        let targetSide = (data['piece'].absolutePosition.baseSide + data['sideOffset']) % 4;
+
+        this.logger.debug('Side should be up: ', targetSide, " because baseSide is " + data['piece'].absolutePosition.baseSide + " and sideOffset is " + data['sideOffset']);
+        for (let i = 0; i < 4; i++) {
+            this.logger.debug('points of side ' + i, data['piece'].sides[i]['startPoint'], data['piece'].sides[i]['endPoint']);
+        }
+
+        let rotation = this.getRotation(data['piece'], targetSide);
+        this.logger.info('Rotating piece ' + rotation + ' degree');
+
+        await this.rotateApi.setParameter('degree', rotation).call();
+
+        data['piece'].absolutePosition.baseSide = (data['piece'].absolutePosition.baseSide + data['sideOffset']) % 4;
+
+        this.recalculateBoundingBox(data['piece'], targetSide, rotation);
 
         this.setReady();
     }
-}
 
-module.exports = new Rotator();
+    reset() {
+        return this.resetApi.call();
+    }
+}

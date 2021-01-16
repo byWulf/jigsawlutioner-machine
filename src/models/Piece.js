@@ -1,51 +1,60 @@
-const BoundingBox = require('./BoundingBox');
-const AbsolutePosition = require('./AbsolutePosition');
+import BoundingBox from './BoundingBox.js';
+import AbsolutePosition from "./AbsolutePosition.js";
 
-function Piece() {
+export default class Piece {
     /**
      * @type {int}
      */
-    this.pieceIndex = 0;
+    pieceIndex = 0;
 
     /**
      * @type {Object[]}
      */
-    this.sides = [];
+    sides = [];
 
     /**
      * @type {BoundingBox}
      */
-    this.boundingBox = new BoundingBox();
+    boundingBox = new BoundingBox();
 
     /**
      * @type {AbsolutePosition}
      */
-    this.absolutePosition = new AbsolutePosition();
+    absolutePosition = new AbsolutePosition();
 
     /**
      * @type {Object<string>}
      */
-    this.files = {};
+    files = {};
+
     /**
      * @type {Object<Object>}
      */
-    this.images = {};
+    images = {};
 
-    this.dimensions = {};
+    dimensions = {};
 
-    this.fillFromObject = (object) => {
+    constructor(pieceIndex, sides, boundingBox, files, images, dimensions) {
+        this.pieceIndex = pieceIndex;
+        this.sides = sides;
+        this.boundingBox = boundingBox;
+        this.files = files;
+        this.images = images;
+        this.dimensions = dimensions;
+    }
+
+    static createFromObject(object) {
         if (typeof object !== 'object') {
-            return;
+            throw new Error('Got something else than an object.');
         }
 
-        this.pieceIndex = object.pieceIndex ? parseInt(object.pieceIndex, 10) : 0;
-        this.sides = object.sides || [];
-        this.boundingBox.fillFromObject(object.boundingBox);
-        this.files = object.files || {};
-        this.images = object.images || {};
-        this.absolutePosition.fillFromObject(object.absolutePosition);
-        this.dimensions = object.dimensions || {};
+        return new Piece(
+            object.pieceIndex ? parseInt(object.pieceIndex, 10) : 0,
+            object.sides || [],
+            BoundingBox.createFromObject(object.boundingBox),
+            object.files || {},
+            object.images || {},
+            object.dimensions || {}
+        );
     };
 }
-
-module.exports = Piece;

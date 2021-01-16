@@ -1,25 +1,30 @@
-const logger = require('./logger').getInstance('Mode'.blue);
-logger.setLevel(logger.LEVEL_INFO);
-const events = require('./events');
+import Logger from "./logger.js";
+const logger = new Logger('Mode'.blue);
+logger.setLevel(Logger.LEVEL_INFO);
 
+class ModeService {
+    get MODE_SCAN() {
+        return 'scan';
+    }
 
-function ModeService() {
-    this.MODE_SCAN = 'scan';
-    this.MODE_PLACE = 'place';
+    get MODE_PLACE() {
+        return 'place';
+    }
 
-    this.mode = 'scan';
+    mode = this.MODE_SCAN;
 
-    this.switchMode = async (mode) => {
+    switchMode(mode) {
         this.mode = mode;
         logger.info('=========================');
         logger.info('== Switched to mode ' + mode);
         logger.info('=========================');
 
-        events.dispatch('modeSwitched', mode);
-    };
-    this.getMode = () => {
+        process.emit('jigsawlutioner.modeSwitched', mode);
+    }
+
+    getMode() {
         return this.mode;
-    };
+    }
 }
 
-module.exports = new ModeService();
+export default new ModeService();

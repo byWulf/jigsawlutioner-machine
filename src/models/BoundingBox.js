@@ -1,42 +1,49 @@
-function BoundingBox() {
+export default class BoundingBox {
     /**
      * @type {int}
      */
-    this.top = 0;
+    top = 0;
 
     /**
      * @type {int}
      */
-    this.bottom = 0;
+    bottom = 0;
 
     /**
      * @type {int}
      */
-    this.left = 0;
+    left = 0;
 
     /**
      * @type {int}
      */
-    this.right = 0;
+    right = 0;
 
-    this.fillFromObject = (object) => {
+    constructor(left, right, top, bottom) {
+        this.left = left;
+        this.right = right;
+        this.top = top;
+        this.bottom = bottom;
+    }
+
+    static createFromObject(object) {
         if (typeof object !== 'object') {
-            return;
+            throw new Error('Got something else than an object.');
         }
 
-        this.top = object.top ? parseInt(object.top, 10) : 0;
-        this.bottom = object.bottom ? parseInt(object.bottom, 10) : 0;
-        this.left = object.left ? parseInt(object.left, 10) : 0;
-        this.right = object.right ? parseInt(object.right, 10) : 0;
-    };
+        return new BoundingBox(
+            object.left ? parseInt(object.left, 10) : 0,
+            object.right ? parseInt(object.right, 10) : 0,
+            object.top ? parseInt(object.top, 10) : 0,
+            object.bottom ? parseInt(object.bottom, 10) : 0
+        );
+    }
 
-    this.getCenterX = () => {
+    getCenterX() {
         return this.left + (this.right - this.left) / 2;
-    };
+    }
 
-    this.getCenterY = () => {
+    getCenterY() {
         return this.top + (this.bottom - this.top) / 2;
-    };
+    }
 }
-
-module.exports = BoundingBox;

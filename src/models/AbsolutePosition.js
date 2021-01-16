@@ -1,33 +1,35 @@
-function AbsolutePosition() {
+export default class AbsolutePosition {
     /**
-     * @type {Group}
+     * @type {Group|null}
      */
-    this.group = null;
+    group = null;
 
     /**
      * @type {int}
      */
-    this.x = 0;
+    x = 0;
 
     /**
      * @type {int}
      */
-    this.y = 0;
+    y = 0;
 
-    /**
-     * @type {number}
-     */
-    this.baseSide = 0;
+    constructor(x, y, group) {
+        this.x = x;
+        this.y = y;
+        this.group = group || null;
+    }
 
-    this.fillFromObject = (object) => {
+    static createFromObject(object) {
         if (typeof object !== 'object') {
-            return;
+            console.log(object);
+            throw new Error('Got something else than an object.');
         }
 
-        this.x = object.x ? parseInt(object.x, 10) : 0;
-        this.y = object.y ? parseInt(object.y, 10) : 0;
-        this.baseSide = object.baseSide ? parseInt(object.baseSide, 10) : 0;
+        return new AbsolutePosition(
+            object.x ? parseInt(object.x, 10) : 0,
+            object.y ? parseInt(object.y, 10) : 0,
+            object.baseSide ? parseInt(object.baseSide, 10) : 0
+        );
     }
 }
-
-module.exports = AbsolutePosition;

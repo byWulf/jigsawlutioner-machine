@@ -1,36 +1,46 @@
-function Plate(plateIndex) {
-    this.logger = require('../logger').getInstance('Plate'.gray + plateIndex);
-    this.logger.setLevel(this.logger.LEVEL_DEBUG);
+import Logger from '../logger.js';
 
-    this.index = plateIndex;
-    this.data = {};
-    this.ready = true;
+export default class Plate {
+    index;
 
-    this.getData = () => {
+    logger;
+
+    data = {};
+
+    ready = true;
+
+    constructor(index) {
+        this.index = index;
+        this.logger = new Logger('Plate'.gray + index);
+    }
+
+    get index() {
+        return this.index;
+    }
+
+    getData() {
         return new Promise((resolve) => {
             let interval = setInterval(() => {
                 if (this.ready) {
                     clearInterval(interval);
                     resolve(this.data);
                 }
-            }, 100);
+            }, 25);
         });
-    };
+    }
 
-    this.setData = (key, value) => {
+    setData(key, value) {
         this.data[key] = value;
         this.logger.debug('Got "' + key + '"');
-    };
+    }
 
-    this.setNotReady = () => {
+    setNotReady() {
         this.ready = false;
         this.logger.debug('Not ready');
-    };
+    }
 
-    this.setReady = () => {
+    setReady() {
         this.ready = true;
         this.logger.debug('Ready');
-    };
+    }
 }
-
-module.exports = Plate;
