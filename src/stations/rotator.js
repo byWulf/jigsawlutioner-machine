@@ -24,8 +24,8 @@ export default class Rotator extends Station {
      */
     getRotation(piece, targetSide) {
         return -Math.atan2(
-                piece.sides[3-targetSide]['endPoint'][2] - piece.sides[3-targetSide]['startPoint'][2],
-                piece.sides[3-targetSide]['endPoint'][1] - piece.sides[3-targetSide]['startPoint'][1]
+                piece.sides[3-targetSide]['endPoint'].y - piece.sides[3-targetSide]['startPoint'].y,
+                piece.sides[3-targetSide]['endPoint'].x - piece.sides[3-targetSide]['startPoint'].x
             ) * 180 / Math.PI - 90;
     }
 
