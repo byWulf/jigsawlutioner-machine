@@ -40,6 +40,12 @@ export default class ControllerRequest {
 
         this.options.searchParams = this.parameters;
 
-        return got.get(url, this.options);
+        return new Promise(async (resolve) => {
+            const startTime = Date.now();
+            const response = await got.get(url, this.options);
+            logger.debug(url + ' took ' + (Date.now() - startTime) + 'ms');
+
+            resolve(response);
+        });
     }
 }
