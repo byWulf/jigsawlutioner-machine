@@ -97,14 +97,12 @@ export default class Webserver {
 
     registerModeEvents() {
         process.on('jigsawlutioner.modeSwitched', (mode) => {
-            this.mode = mode;
-
-            this.io.emit('modeSwitched', this.mode);
+            this.io.emit('modeSwitched', modeService.getMode());
         });
     }
 
     registerClientModeEvents(socket) {
-        socket.emit('modeSwitched', this.mode || modeService.MODE_SCAN);
+        socket.emit('modeSwitched', modeService.getMode());
 
         socket.on('switchMode', async (mode) => {
             logger.debug('Got message: switchMode', mode);
@@ -114,9 +112,7 @@ export default class Webserver {
 
     registerProjectManagerEvents() {
         process.on('jigsawlutioner.projectSelected', (name) => {
-            this.projectName = name;
-
-            this.io.emit('projectSelected', this.projectName);
+            this.io.emit('projectSelected', projectManager.getCurrentProjectName());
         });
         process.on('jigsawlutioner.projectDeleted', (name) => {
             this.io.emit('projectDeleted', name);
@@ -124,7 +120,7 @@ export default class Webserver {
     }
 
     registerClientProjectManagerEvents(socket) {
-        socket.emit('projectSelected', this.projectName || '');
+        socket.emit('projectSelected', projectManager.getCurrentProjectName());
 
         socket.on('getProjects', () => {
             logger.debug('Got message: getProjects');
@@ -162,6 +158,14 @@ export default class Webserver {
 
             this.io.emit('piecesScannedChanged', piecesCount);
         });
+
+        process.on('jigsawlutioner.pieceScanned', (piece) => {
+            this.io.emit('pieceScanned', piece);
+        });
+
+        process.on('jigsawlutioner.timingStatistics', (statistics) => {
+            this.io.emit('timingStatistics', statistics);
+        })
     }
 
     registerClientStatisticsEvents(socket) {
