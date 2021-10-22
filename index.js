@@ -7,18 +7,18 @@ import Logger from './src/logger.js';
 Logger.setGlobalLevel(Logger.LEVEL_DEBUG);
 const logger = new Logger('Main'.green);
 
-import './controllerConfig';
+import './controllerConfig.js';
 import Conveyor from "./src/conveyor.js";
 import Scanner from './src/stations/scanner.js';
 import Rotator from './src/stations/rotator.js';
-import Sorter from './src/stations/sorter.js';
+import SorterByNops from './src/stations/sorterByNops.js';
 
 (async () => {
     logger.info('Setting up conveyor');
-    const conveyor = new Conveyor(8, 'pi1', 'df', 'A', 4, 135);
-    conveyor.addStation(3, new Scanner('pi2', 26, 68, 25, 82, 245, 2));
-    conveyor.addStation(5, new Rotator('pi2', 'a7', 'A', 'a7', 'B'));
-    conveyor.addStation(7, new Sorter('pi1', 'a7', 'B', 'a7', 'C', 'a7', 'D'));
+    const conveyor = new Conveyor(6, 'pi8', 'D', 4, 135);
+    conveyor.addStation(2, new Scanner('pi2', -2, 25, 72, 25, 83, 245, 2));
+    conveyor.addStation(3, new Rotator('pi5', 'A', 'D'));
+    conveyor.addStation(5, new SorterByNops('pi6', 'B', 'C', 'A'));
 
     logger.info('Resetting motors');
     await conveyor.resetMotors();

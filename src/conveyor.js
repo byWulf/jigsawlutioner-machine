@@ -15,15 +15,15 @@ export default class Conveyor {
     running = false;
     finished = true;
 
-    constructor(plateCount, pi, motorBrick, motorPort, sensorPort, additionalForward) {
-        this.plateCount = plateCount;
+    constructor(stationCount, pi, motorPort, sensorPort, additionalForward) {
+        this.plateCount = stationCount * 2;
 
-        this.resetApi = new ControllerRequest(pi, '/conveyor/reset', {additionalForward: additionalForward})
-            .addMotor('motor', motorBrick, motorPort)
+        this.resetApi = new ControllerRequest(pi, '/reset', {additionalForward: additionalForward})
+            .addMotor('motor', motorPort)
             .addSensor('sensor', sensorPort);
 
-        this.moveToNextPlateApi = new ControllerRequest(pi, '/conveyor/move-to-next-plate')
-            .addMotor('motor', motorBrick, motorPort);
+        this.moveToNextPlateApi = new ControllerRequest(pi, '/move-to-next-plate')
+            .addMotor('motor', motorPort);
 
         process.on('jigsawlutioner.projectSelected', this.initializePlates);
 
@@ -89,7 +89,7 @@ export default class Conveyor {
         }
 
         station.setConveyor(this);
-        this.stations[index] = station;
+        this.stations[(index - 1) * 2] = station;
     };
 
     /**

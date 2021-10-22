@@ -4,7 +4,7 @@ require('colors');
 
 const Station = require('./station');
 
-class Arm extends Station {
+class Placer extends Station {
     constructor() {
         super();
 
@@ -433,4 +433,4 @@ class Arm extends Station {
     }
 }
 
-module.exports = new Arm();
+module.exports = new Placer();

@@ -4,7 +4,7 @@ import Logger from "./logger.js";
 const logger = new Logger('Request'.gray);
 
 export default class ControllerRequest {
-    static port;
+    static port = 3000;
     static pis;
 
     constructor(pi, url, parameters, options) {
@@ -14,8 +14,7 @@ export default class ControllerRequest {
         this.options = options || {};
     }
 
-    addMotor(name, brickPiIndex, port) {
-        this.parameters[name + '[address]'] = ControllerRequest.pis[this.pi].bricks[brickPiIndex].address;
+    addMotor(name, port) {
         this.parameters[name + '[port]'] = port;
 
         return this;
@@ -34,7 +33,7 @@ export default class ControllerRequest {
     }
 
     call() {
-        const url = ControllerRequest.pis[this.pi].dns + ':' + ControllerRequest.port + this.url;
+        const url = ControllerRequest.pis[this.pi].dns + this.url;
 
         logger.debug('Calling ' + url + ' with parameters:', this.parameters);
 

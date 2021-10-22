@@ -90,7 +90,7 @@ import prompts from "prompts";
                         lastPosition = positionResponse.value;
 
                         const request = new ControllerRequest(piResponse.value, '/motor/position')
-                            .addMotor('motor', brickResponse.value, motorResponse.value)
+                            .addMotor('motor', motorResponse.value)
                             .setParameter('power', 100)
                             .setParameter('position', lastPosition)
                         ;
@@ -108,7 +108,7 @@ import prompts from "prompts";
                         lastPower = powerResponse.value;
 
                         const request = new ControllerRequest(piResponse.value, '/motor/reset')
-                            .addMotor('motor', brickResponse.value, motorResponse.value)
+                            .addMotor('motor', motorResponse.value)
                             .setParameter('power', lastPower)
                             .setParameter('direction', choiceResponse.value === 'resetForward' ? 'forward' : 'backward')
                         ;

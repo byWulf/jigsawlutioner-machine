@@ -6,15 +6,15 @@ export default class Rotator extends Station {
 
     rotateApi;
 
-    constructor(pi, pushMotorBrick, pushMotorPort, rotateMotorBrick, rotateMotorPort) {
+    constructor(pi, pushMotorPort, rotateMotorPort) {
         super('Rotator'.green);
 
-        this.resetApi = new ControllerRequest(pi, '/rotator/reset')
-            .addMotor('pushMotor', pushMotorBrick, pushMotorPort);
+        this.resetApi = new ControllerRequest(pi, '/reset')
+            .addMotor('pushMotor', pushMotorPort);
 
-        this.rotateApi = new ControllerRequest(pi, '/rotator/rotate')
-            .addMotor('pushMotor', pushMotorBrick, pushMotorPort)
-            .addMotor('rotateMotor', rotateMotorBrick, rotateMotorPort);
+        this.rotateApi = new ControllerRequest(pi, '/rotate')
+            .addMotor('pushMotor', pushMotorPort)
+            .addMotor('rotateMotor', rotateMotorPort);
     }
 
     /**

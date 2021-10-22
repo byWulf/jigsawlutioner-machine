@@ -22,10 +22,11 @@ export default class Scanner extends Station {
     pieceDir = 'pieces/';
     imagesDir = 'images/';
 
-    constructor(pi, cropLeft, cropRight, cropTop, cropBottom, threshold, reduction) {
+    constructor(pi, rotation, cropLeft, cropRight, cropTop, cropBottom, threshold, reduction) {
         super('Scanner'.yellow);
 
-        this.takePhotoApi = new ControllerRequest(pi, '/scanner/take-photo', {
+        this.takePhotoApi = new ControllerRequest(pi, '/take-photo', {
+            rotation: rotation,
             left: cropLeft,
             right: cropRight,
             top: cropTop,
