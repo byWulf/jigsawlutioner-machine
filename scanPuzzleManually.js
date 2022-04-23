@@ -8,27 +8,24 @@ import fs from 'fs';
         .addMotor('motor', 'D')
         .addSensor('sensor', 4)).call();
 
+    let conf = await prompts({
+        type: 'confirm',
+        name: 'value',
+        message: 'Next?',
+        initial: true
+    });
+
     let count = 0;
     while (true) {
-
-        let conf = await prompts({
-            type: 'confirm',
-            name: 'value',
-            message: 'Next?',
-            initial: true
-        });
-        if (!conf.value) {
-            break;
-        }
 
         await (new ControllerRequest('pi8', '/move-to-next-plate')
             .addMotor('motor', 'D')).call();
 
         let response = await (new ControllerRequest('pi2', '/take-photo', {
-            left: 0.24,
-            right: 0.70,
-            top: 0.16,
-            bottom: 0.81,
+            left: 0.20,
+            right: 0.66,
+            top: 0.15,
+            bottom: 0.80,
             width: 1000,
             'light[pin]': 4,
             'light[position]': 'top'
@@ -42,10 +39,10 @@ import fs from 'fs';
         fs.writeFileSync('images/piece' + count + '_color.jpg', imageBuffer);
 
         let response2 = await (new ControllerRequest('pi2', '/take-photo', {
-            left: 0.24,
-            right: 0.70,
-            top: 0.16,
-            bottom: 0.81,
+            left: 0.20,
+            right: 0.66,
+            top: 0.15,
+            bottom: 0.80,
             width: 1000,
             'light[pin]': 4,
             'light[position]': 'bottom',
