@@ -93,7 +93,7 @@
             "docker exec -it jigsawlutioner-machine-app npm install",
             "docker exec -it jigsawlutioner-machine-app npm run dev",
             "docker exec -it jigsawlutioner-machine-app bin/console doctrine:database:create --if-not-exists --no-interaction",
-            "docker exec -it jigsawlutioner-machine-app bin/console doctrine:migration:migrate --no-interaction",
+            "docker exec -it jigsawlutioner-machine-app bin/console doctrine:migration:migrate --allow-no-migration --no-interaction",
             "echo 'Installation complete! Visit http://localhost:8000 to use the machine.'"
         ]
     },
