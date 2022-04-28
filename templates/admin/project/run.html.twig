@@ -1,0 +1,22 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{% block head_stylesheets %}
+    {{ parent() }}
+    {{ encore_entry_link_tags('run') }}
+{% endblock %}
+
+{% block head_javascript %}
+    {{ parent() }}
+    {{ encore_entry_script_tags('run') }}
+    <script>
+        window.controllers = {{ get_controllers()|serialize('json')|raw }};
+    </script>
+{% endblock %}
+
+{% block content_title %}
+    Running project "{{ entity.instance.name }}"
+{% endblock %}
+
+{% block main %}
+    <div id="app"></div>
+{% endblock %}

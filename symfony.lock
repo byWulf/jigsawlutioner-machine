@@ -74,8 +74,14 @@
     "doctrine/sql-formatter": {
         "version": "1.1.2"
     },
-    "egulias/email-validator": {
-        "version": "3.1.2"
+    "easycorp/easyadmin-bundle": {
+        "version": "4.1",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "master",
+            "version": "3.0",
+            "ref": "b131e6cbfe1b898a508987851963fff485986285"
+        }
     },
     "friendsofphp/proxy-manager-lts": {
         "version": "v1.0.7"
@@ -246,18 +252,6 @@
     "symfony/intl": {
         "version": "v6.0.5"
     },
-    "symfony/mailer": {
-        "version": "6.0",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "master",
-            "version": "4.3",
-            "ref": "97a61eabb351d7f6cb7702039bcfe07fe9d7e03c"
-        },
-        "files": [
-            "./config/packages/mailer.yaml"
-        ]
-    },
     "symfony/maker-bundle": {
         "version": "1.40",
         "recipe": {
@@ -279,9 +273,6 @@
             "./config/packages/messenger.yaml"
         ]
     },
-    "symfony/mime": {
-        "version": "v6.0.7"
-    },
     "symfony/monolog-bridge": {
         "version": "v6.0.3"
     },
@@ -297,18 +288,6 @@
             "./config/packages/monolog.yaml"
         ]
     },
-    "symfony/notifier": {
-        "version": "6.0",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "master",
-            "version": "5.0",
-            "ref": "c31585e252b32fe0e1f30b1f256af553f4a06eb9"
-        },
-        "files": [
-            "./config/packages/notifier.yaml"
-        ]
-    },
     "symfony/options-resolver": {
         "version": "v6.0.3"
     },
@@ -321,9 +300,6 @@
     "symfony/polyfill-intl-icu": {
         "version": "v1.25.0"
     },
-    "symfony/polyfill-intl-idn": {
-        "version": "v1.25.0"
-    },
     "symfony/polyfill-intl-normalizer": {
         "version": "v1.25.0"
     },
@@ -331,6 +307,9 @@
         "version": "v1.25.0"
     },
     "symfony/polyfill-php81": {
+        "version": "v1.25.0"
+    },
+    "symfony/polyfill-uuid": {
         "version": "v1.25.0"
     },
     "symfony/process": {
@@ -426,6 +405,9 @@
             "./templates/base.html.twig"
         ]
     },
+    "symfony/uid": {
+        "version": "v6.0.3"
+    },
     "symfony/validator": {
         "version": "6.0",
         "recipe": {
@@ -458,18 +440,6 @@
         "files": [
             "./config/packages/web_profiler.yaml",
             "./config/routes/web_profiler.yaml"
-        ]
-    },
-    "symfony/webapp-meta": {
-        "version": "1.0",
-        "recipe": {
-            "repo": "github.com/symfony/recipes",
-            "branch": "master",
-            "version": "1.0",
-            "ref": "67cae591d131c133d63b893c5324796b88c59b34"
-        },
-        "files": [
-            "./config/packages/messenger.yaml"
         ]
     },
     "symfony/webpack-encore-bundle": {

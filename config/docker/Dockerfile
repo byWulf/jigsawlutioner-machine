@@ -66,6 +66,9 @@ RUN groupadd jigsawlutionermachine
 RUN useradd -m -g jigsawlutionermachine --shell /bin/bash jigsawlutionermachine && \
     echo "jigsawlutionermachine ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+RUN mkdir -p /home/jigsawlutionermachine/shared/php_temp/system_temp /home/jigsawlutionermachine/shared/php_temp/upload_temp && \
+    chown -R jigsawlutionermachine:jigsawlutionermachine /home/jigsawlutionermachine/shared/php_temp/
+
 RUN rm /etc/php/8.1/fpm/pool.d/www.conf && \
     mkdir -p /run/php && \
     mkdir -p /var/log/php8.1-fpm/jigsawlutionermachine && \
