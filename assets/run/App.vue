@@ -8,14 +8,20 @@
     </div>
   </div>
   <button :class="'btn btn-warning ' + (resetRunning ? 'disabled ' : '')" @click="reset()">Reset motors</button>
+  <button @click="takeImage('top')">Bild (Oberbeleuchtung)</button>
+  <button @click="takeImage('bottom')">Bild (Unterbeleuchtung)</button>
+  <img :src="imageData" alt="">
 </template>
 
 <script>
+import base64 from 'base64-js';
+
 export default {
   data() {
     return {
       resetRunning: false,
       controllers: {},
+      imageData: '',
     }
   },
   mounted() {
@@ -51,6 +57,29 @@ export default {
       //await this.axios.get('/controllers/{id}/call/{path}''/reset?motor[port]=D&sensor[pin]=4&additionalForward=105');
 
       this.resetRunning = false;
+    },
+
+    getControllerByName(name) {
+      for (let controllerId in this.controllers) {
+        if (this.controllers[controllerId].name === name) {
+          return this.controllers[controllerId];
+        }
+      }
+
+      return null;
+    },
+
+    async takeImage(lightPosition) {
+      const controller = this.getControllerByName('scanner');
+      if (controller === null) {
+        return;
+      }
+
+      const result = await this.axios.get('/controllers/' + controller.id + '/call/take-photo', {
+        params: {'light[position]': lightPosition},
+      });
+
+      this.imageData = 'data:image/jpg;base64,' + base64.fromByteArray(result.data);
     }
   }
 }

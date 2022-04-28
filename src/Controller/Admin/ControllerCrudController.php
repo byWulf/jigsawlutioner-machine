@@ -18,6 +18,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -63,16 +66,12 @@ class ControllerCrudController extends AbstractCrudController
 
         $ups = $this->controllerService->getAllUps();
 
-        dump($ups);
-
         /** @var EntityDto $entity */
         foreach ($responseParameters->get('entities', []) as $entity) {
             /** @var Controller $controller */
             $controller = $entity->getInstance();
             $controller->setUp($ups[$controller->getId()] ?? false);
         }
-
-        dump($responseParameters->get('entities', []));
 
         return $responseParameters;
     }
@@ -91,9 +90,11 @@ class ControllerCrudController extends AbstractCrudController
                 'timeout' => 2,
             ]);
 
-            return new Response(null, $response->getStatusCode());
+            return new Response($response->getContent(), $response->getStatusCode());
         } catch (TransportExceptionInterface) {
             return new Response(null, Response::HTTP_REQUEST_TIMEOUT);
+        } catch (ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $exception) {
+            return new Response(null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

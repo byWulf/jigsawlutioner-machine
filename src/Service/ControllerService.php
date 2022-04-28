@@ -24,7 +24,12 @@ class ControllerService
      */
     public function callController(Controller $controller, string $path, array $parameters = [], array $options = []): ResponseInterface
     {
-        return $this->client->request('GET', rtrim($controller->getBaseUri(), '/') . '/' . ltrim($path, '/'), [
+        $url = rtrim($controller->getBaseUri(), '/') . '/' . ltrim($path, '/');
+        if (count($controller->getParameters() ?? []) > 0) {
+            $url .= '?' . implode('&', $controller->getParameters());
+        }
+
+        return $this->client->request('GET', $url, [
             'query' => $parameters,
             ...$options,
         ]);
