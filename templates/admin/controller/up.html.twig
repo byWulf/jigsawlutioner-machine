@@ -1,4 +1,4 @@
-{% if is_controller_up(entity.instance) %}
+{% if entity.instance.up %}
     <span class="badge badge-success">Up</span>
 {% else %}
     <span class="badge badge-danger">Down</span>
