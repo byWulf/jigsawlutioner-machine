@@ -3,10 +3,13 @@
 namespace App\Entity;
 
 use App\Repository\ControllerRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Stringable;
 
 #[ORM\Entity(repositoryClass: ControllerRepository::class)]
-class Controller
+class Controller implements Stringable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -23,6 +26,14 @@ class Controller
     private $parameters = [];
 
     private bool $up = false;
+
+    #[ORM\OneToMany(mappedBy: 'controller', targetEntity: Station::class, orphanRemoval: true)]
+    private $station;
+
+    public function __construct()
+    {
+        $this->station = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -74,5 +85,40 @@ class Controller
     {
         $this->up = $up;
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Station>
+     */
+    public function getStation(): Collection
+    {
+        return $this->station;
+    }
+
+    public function addStation(Station $station): self
+    {
+        if (!$this->station->contains($station)) {
+            $this->station[] = $station;
+            $station->setController($this);
+        }
+
+        return $this;
+    }
+
+    public function removeStation(Station $station): self
+    {
+        if ($this->station->removeElement($station)) {
+            // set the owning side to null (unless already changed)
+            if ($station->getController() === $this) {
+                $station->setController(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function __toString(): string
+    {
+        return $this->getName();
     }
 }

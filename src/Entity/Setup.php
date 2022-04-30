@@ -2,14 +2,14 @@
 
 namespace App\Entity;
 
-use App\Repository\ProjectRepository;
+use App\Repository\SetupRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-#[ORM\Entity(repositoryClass: ProjectRepository::class)]
-class Project
+#[ORM\Entity(repositoryClass: SetupRepository::class)]
+class Setup
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -21,13 +21,13 @@ class Project
     #[Groups('project')]
     private $name;
 
-    #[ORM\OneToMany(mappedBy: 'project', targetEntity: Piece::class, orphanRemoval: true)]
+    #[ORM\OneToMany(mappedBy: 'setup', targetEntity: Station::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
     #[Groups('project')]
-    private $pieces;
+    private $stations;
 
     public function __construct()
     {
-        $this->pieces = new ArrayCollection();
+        $this->stations = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -48,29 +48,29 @@ class Project
     }
 
     /**
-     * @return Collection<int, Piece>
+     * @return Collection<int, Station>
      */
-    public function getPieces(): Collection
+    public function getStations(): Collection
     {
-        return $this->pieces;
+        return $this->stations;
     }
 
-    public function addPiece(Piece $piece): self
+    public function addStation(Station $station): self
     {
-        if (!$this->pieces->contains($piece)) {
-            $this->pieces[] = $piece;
-            $piece->setProject($this);
+        if (!$this->stations->contains($station)) {
+            $this->stations[] = $station;
+            $station->setSetup($this);
         }
 
         return $this;
     }
 
-    public function removePiece(Piece $piece): self
+    public function removeStation(Station $station): self
     {
-        if ($this->pieces->removeElement($piece)) {
+        if ($this->stations->removeElement($station)) {
             // set the owning side to null (unless already changed)
-            if ($piece->getProject() === $this) {
-                $piece->setProject(null);
+            if ($station->getSetup() === $this) {
+                $station->setSetup(null);
             }
         }
 

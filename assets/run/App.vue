@@ -7,21 +7,42 @@
       <span class="px-1">{{ controller.name }}</span>
     </div>
   </div>
-  <button :class="'btn btn-warning ' + (resetRunning ? 'disabled ' : '')" @click="reset()">Reset motors</button>
-  <button @click="takeImage('top')">Bild (Oberbeleuchtung)</button>
-  <button @click="takeImage('bottom')">Bild (Unterbeleuchtung)</button>
-  <img :src="imageData" alt="">
+  <button @click="resetConveyor()" class="btn btn-warning">Reset conveyor</button>
+  <button @click="takePhoto()" :class="'btn btn-primary ' + (takingPhoto ? 'disabled' : '')">Take photo</button>
+  <div v-if="currentPiece" class="row">
+    <div class="col-2">
+      <h3>Silhouette</h3>
+      <img :src="setsPublicDir + '/' + currentPiece.images.silhouette" alt="" class="photo">
+    </div>
+    <div class="col-2">
+      <h3>Color</h3>
+      <img :src="setsPublicDir + '/' + currentPiece.images.color" alt="" class="photo">
+    </div>
+    <div class="col-2">
+      <h3>Mask</h3>
+      <img :src="setsPublicDir + '/' + currentPiece.images.mask" alt="" class="photo">
+    </div>
+    <div class="col-2">
+      <h3>Transparent</h3>
+      <img :src="setsPublicDir + '/' + currentPiece.images.transparent" alt="" class="photo">
+    </div>
+    <div class="col-2">
+      <h3>Trans small</h3>
+      <img :src="setsPublicDir + '/' + currentPiece.images.transparentSmall" alt="" class="photo">
+    </div>
+  </div>
 </template>
 
 <script>
-import base64 from 'base64-js';
-
 export default {
   data() {
     return {
-      resetRunning: false,
+      project: window.project,
+      setsPublicDir: window.setsPublicDir,
       controllers: {},
-      imageData: '',
+      currentPiece: null,
+      currentPieceIndex: 1,
+      takingPhoto: false,
     }
   },
   mounted() {
@@ -47,17 +68,6 @@ export default {
 
       setTimeout(() => this.checkControllerUp(), 5000);
     },
-    async reset() {
-      if (this.resetRunning) {
-        return;
-      }
-
-      this.resetRunning = true;
-
-      //await this.axios.get('/controllers/{id}/call/{path}''/reset?motor[port]=D&sensor[pin]=4&additionalForward=105');
-
-      this.resetRunning = false;
-    },
 
     getControllerByName(name) {
       for (let controllerId in this.controllers) {
@@ -69,21 +79,73 @@ export default {
       return null;
     },
 
-    async takeImage(lightPosition) {
+    async takePhoto() {
+      if (this.takingPhoto) {
+        return;
+      }
+      this.takingPhoto = true;
+
       const controller = this.getControllerByName('scanner');
       if (controller === null) {
         return;
       }
 
-      const result = await this.axios.get('/controllers/' + controller.id + '/call/take-photo', {
-        params: {'light[position]': lightPosition},
-      });
+      const topFilename = this.project.id + '/piece' + this.currentPieceIndex + '_color';
+      const bottomFilename = this.project.id + '/piece' + this.currentPieceIndex;
 
-      this.imageData = 'data:image/jpg;base64,' + base64.fromByteArray(result.data);
+      const resultTop = await this.axios.get('/controllers/' + controller.id + '/take-photo/top/bottom/' + topFilename);
+      this.imageTopSrc = resultTop.data.src + '?' + Math.random();
+
+      const resultBottom = await this.axios.get('/controllers/' + controller.id + '/take-photo/bottom/top/' + bottomFilename);
+      this.imageBottomSrc = resultBottom.data.src + '?' + Math.random();
+
+      await Promise.all([
+          this.moveToNextPlate(),
+          this.savePiece(this.currentPieceIndex, bottomFilename, topFilename),
+      ]);
+
+      this.currentPieceIndex++;
+      this.takingPhoto = false;
+    },
+
+    async savePiece(pieceIndex, bottomFilename, topFilename) {
+      try {
+        const result = await this.axios.post('/projects/' + this.project.id + '/pieces/' + pieceIndex, null, {
+          params: {
+            silhouetteFilename: bottomFilename,
+            colorFilename: topFilename,
+          }
+        });
+
+        this.currentPiece = result.data;
+      } catch (error) {
+        this.currentPiece = null;
+      }
+    },
+
+    async resetConveyor() {
+      const controller = this.getControllerByName('conveyor');
+      if (controller === null) {
+        return;
+      }
+
+      await this.axios.get('/controllers/' + controller.id + '/call/reset');
+    },
+
+    async moveToNextPlate() {
+      const controller = this.getControllerByName('conveyor');
+      if (controller === null) {
+        return;
+      }
+
+      await this.axios.get('/controllers/' + controller.id + '/call/move-to-next-plate');
     }
   }
 }
 </script>
 
 <style scoped>
+  img.photo {
+    width: 100%;
+  }
 </style>

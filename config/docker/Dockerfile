@@ -27,6 +27,7 @@ RUN apt-get update -q && apt-get install -qqy --no-install-recommends --fix-miss
     php8.1-zip \
     php8.1-soap \
     php8.1-imagick \
+    php8.1-gd \
     nginx \
     memcached \
     ssl-cert \

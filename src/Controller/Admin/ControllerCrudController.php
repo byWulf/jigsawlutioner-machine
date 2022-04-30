@@ -14,6 +14,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\UrlField;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,13 +23,14 @@ use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class ControllerCrudController extends AbstractCrudController
 {
     public function __construct(
         private readonly ControllerService $controllerService,
-        private readonly ControllerRepository $controllerRepository,
+        private readonly Filesystem $filesystem,
+        private readonly string $setsBaseDir,
+        private readonly string $setsPublicDir,
     ) {
     }
 
@@ -86,9 +88,7 @@ class ControllerCrudController extends AbstractCrudController
     public function callController(Controller $controller, string $path, Request $request): Response
     {
         try {
-            $response = $this->controllerService->callController($controller, $path, $request->query->all(), [
-                'timeout' => 2,
-            ]);
+            $response = $this->controllerService->callController($controller, $path, $request->query->all());
 
             return new Response($response->getContent(), $response->getStatusCode());
         } catch (TransportExceptionInterface) {
@@ -96,5 +96,23 @@ class ControllerCrudController extends AbstractCrudController
         } catch (ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $exception) {
             return new Response(null, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    #[Route('/controllers/{id}/take-photo/{lightPosition}/{lightPositionAfter}/{filename}', requirements: ['filename' => '^[^.]+$'])]
+    public function takeImage(Controller $controller, string $lightPosition, string $lightPositionAfter, string $filename): JsonResponse
+    {
+        $response = $this->controllerService->callController($controller, '/take-photo', [
+            'light[position]' => $lightPosition,
+            'light[positionAfter]' => $lightPositionAfter
+        ]);
+
+        $this->filesystem->dumpFile(
+            rtrim($this->setsBaseDir, '/') . '/' . ltrim($filename, '/') . '.jpg',
+            $response->getContent()
+        );
+
+        return new JsonResponse([
+            'src' => '/' . trim($this->setsPublicDir, '/') . '/' . ltrim($filename, '/') . '.jpg',
+        ]);
     }
 }
