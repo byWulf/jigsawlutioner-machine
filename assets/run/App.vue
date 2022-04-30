@@ -22,8 +22,10 @@
         <h3 v-else>{{ stationData.position }}. (empty)</h3>
         <component v-if="stationData.station" :ref="'station' + stationData.station.id" :is="stationData.station.strategy" :controller="stationData.station.controller" :project="project"></component>
       </div>
-      <div class="col-2">
-        {{ plates[(stationData.position - 1) * 2] }}
+      <div class="col-2" style="min-height: 100px;">
+        <template v-if="plates[(stationData.position - 1) * 2]">
+          <img v-if="plates[(stationData.position - 1) * 2].data.piece" :src="setsPublicDir + '/' + plates[(stationData.position - 1) * 2].data.piece.images.transparentSmall" style="height: 100px;">
+        </template>
       </div>
     </div>
   </template>
