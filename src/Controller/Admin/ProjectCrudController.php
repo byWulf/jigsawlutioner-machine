@@ -121,13 +121,13 @@ class ProjectCrudController extends AbstractCrudController
         $piece->reduceData();
         $pieceSerialized = $piece->jsonSerialize();
 
-        $maskFilename =  $silhouetteFilename . '_mask.png';
+        $maskFilename =  $request->query->get('silhouetteFilename') . '_mask.png';
         imagepng($silhouetteImage, rtrim($this->setsBaseDir) . '/' . ltrim($maskFilename));
 
-        $transparentFilename =  $colorFilename . '_transparent.png';
+        $transparentFilename =  $request->query->get('silhouetteFilename') . '_transparent.png';
         imagepng($colorImage, rtrim($this->setsBaseDir) . '/' . ltrim($transparentFilename));
 
-        $transparentSmallFilename = $colorFilename . '_transparent_small.png';
+        $transparentSmallFilename = $request->query->get('silhouetteFilename') . '_transparent_small.png';
         imagepng($resizedColorImage, rtrim($this->setsBaseDir) . '/' . ltrim($transparentSmallFilename));
 
         $pieceEntity = new Piece();
