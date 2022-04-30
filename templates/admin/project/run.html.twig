@@ -9,7 +9,9 @@
     {{ parent() }}
     {{ encore_entry_script_tags('run') }}
     <script>
+        window.project = {{ entity.instance|serialize('json', {groups: 'project'})|raw }}
         window.controllers = {{ get_controllers()|serialize('json')|raw }};
+        window.setsPublicDir = {{ sets_public_dir|serialize('json')|raw }}
     </script>
 {% endblock %}
 
