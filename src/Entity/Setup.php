@@ -14,15 +14,16 @@ class Setup
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    #[Groups('project')]
+    #[Groups('setup')]
     private $id;
 
     #[ORM\Column(type: 'string', length: 255)]
-    #[Groups('project')]
+    #[Groups('setup')]
     private $name;
 
     #[ORM\OneToMany(mappedBy: 'setup', targetEntity: Station::class, orphanRemoval: true, cascade: ['persist', 'remove'])]
-    #[Groups('project')]
+    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[Groups('setup')]
     private $stations;
 
     public function __construct()

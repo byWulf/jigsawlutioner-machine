@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Stringable;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ControllerRepository::class)]
 class Controller implements Stringable
@@ -14,9 +15,11 @@ class Controller implements Stringable
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
+    #[Groups(['controller', 'setup'])]
     private $id;
 
     #[ORM\Column(type: 'string', length: 255)]
+    #[Groups(['controller', 'setup'])]
     private $name;
 
     #[ORM\Column(type: 'string', length: 255)]
@@ -28,11 +31,11 @@ class Controller implements Stringable
     private bool $up = false;
 
     #[ORM\OneToMany(mappedBy: 'controller', targetEntity: Station::class, orphanRemoval: true)]
-    private $station;
+    private $stations;
 
     public function __construct()
     {
-        $this->station = new ArrayCollection();
+        $this->stations = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -90,15 +93,15 @@ class Controller implements Stringable
     /**
      * @return Collection<int, Station>
      */
-    public function getStation(): Collection
+    public function getStations(): Collection
     {
-        return $this->station;
+        return $this->stations;
     }
 
     public function addStation(Station $station): self
     {
-        if (!$this->station->contains($station)) {
-            $this->station[] = $station;
+        if (!$this->stations->contains($station)) {
+            $this->stations[] = $station;
             $station->setController($this);
         }
 
@@ -107,7 +110,7 @@ class Controller implements Stringable
 
     public function removeStation(Station $station): self
     {
-        if ($this->station->removeElement($station)) {
+        if ($this->stations->removeElement($station)) {
             // set the owning side to null (unless already changed)
             if ($station->getController() === $this) {
                 $station->setController(null);

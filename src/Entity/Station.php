@@ -12,6 +12,7 @@ class Station
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
+    #[Groups('setup')]
     private $id;
 
     #[ORM\ManyToOne(targetEntity: Setup::class, inversedBy: 'stations')]
@@ -20,15 +21,15 @@ class Station
 
     #[ORM\ManyToOne(targetEntity: Controller::class, inversedBy: 'stations')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups('project')]
+    #[Groups('setup')]
     private $controller;
 
     #[ORM\Column(type: 'integer')]
-    #[Groups('project')]
+    #[Groups('setup')]
     private $position;
 
     #[ORM\Column(type: 'string', length: 255)]
-    #[Groups('project')]
+    #[Groups('setup')]
     private $strategy;
 
     public function getId(): ?int

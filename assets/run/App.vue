@@ -7,42 +7,49 @@
       <span class="px-1">{{ controller.name }}</span>
     </div>
   </div>
-  <button @click="resetConveyor()" class="btn btn-warning">Reset conveyor</button>
-  <button @click="takePhoto()" :class="'btn btn-primary ' + (takingPhoto ? 'disabled' : '')">Take photo</button>
-  <div v-if="currentPiece" class="row">
-    <div class="col-2">
-      <h3>Silhouette</h3>
-      <img :src="setsPublicDir + '/' + currentPiece.images.silhouette" alt="" class="photo">
-    </div>
-    <div class="col-2">
-      <h3>Color</h3>
-      <img :src="setsPublicDir + '/' + currentPiece.images.color" alt="" class="photo">
-    </div>
-    <div class="col-2">
-      <h3>Mask</h3>
-      <img :src="setsPublicDir + '/' + currentPiece.images.mask" alt="" class="photo">
-    </div>
-    <div class="col-2">
-      <h3>Transparent</h3>
-      <img :src="setsPublicDir + '/' + currentPiece.images.transparent" alt="" class="photo">
-    </div>
-    <div class="col-2">
-      <h3>Trans small</h3>
-      <img :src="setsPublicDir + '/' + currentPiece.images.transparentSmall" alt="" class="photo">
+  <div class="row pb-3">
+    <div class="col">
+      <button v-for="setup in setups" @click="currentSetup = setup" :class="'btn btn-' + (setup === currentSetup ? 'primary' : 'secondary')">{{ setup.name }}</button>
     </div>
   </div>
+  <template v-if="currentSetup">
+    <div v-for="stationData in filledStations" class="row pb-3">
+      <div class="col">
+        <h3 v-if="stationData.station">
+          {{ stationData.position }}. {{ stationData.station.strategy }}
+          <span class="badge badge-info"><i class="fab fab-raspberry-pi"></i> {{ stationData.station.controller.name }}</span>
+        </h3>
+        <h3 v-else>{{ stationData.position }}. (empty)</h3>
+        <component v-if="stationData.station" :ref="'station' + stationData.station.id" :is="stationData.station.strategy" :controller="stationData.station.controller" :project="project"></component>
+      </div>
+      <div class="col-2">
+        {{ plates[(stationData.position - 1) * 2] }}
+      </div>
+    </div>
+  </template>
 </template>
 
 <script>
+import AutomaticConveyor from './Strategy/AutomaticConveyor';
+import PhotoTaker from './Strategy/PhotoTaker';
+import Plate from './Model/Plate';
+
 export default {
+  components: {
+    AutomaticConveyor,
+    PhotoTaker,
+  },
   data() {
     return {
       project: window.project,
       setsPublicDir: window.setsPublicDir,
+      setups: window.setups,
+      currentSetup: null,
       controllers: {},
       currentPiece: null,
       currentPieceIndex: 1,
       takingPhoto: false,
+      plates: [],
     }
   },
   mounted() {
@@ -56,6 +63,24 @@ export default {
   inject: [
       'axios',
   ],
+  computed: {
+    filledStations() {
+      const stations = [];
+
+      let currentIndex = 0.5;
+      for (let i in this.currentSetup.stations) {
+        const station = this.currentSetup.stations[i];
+        for (let index = currentIndex + 0.5; index < station.position; index += 0.5) {
+          stations.push({station: null, position: index})
+        }
+        stations.push({station: station, position: station.position});
+
+        currentIndex = station.position;
+      }
+
+      return stations;
+    }
+  },
   methods: {
     async checkControllerUp() {
       const result = await this.axios.get('/controllers/up');
@@ -69,83 +94,39 @@ export default {
       setTimeout(() => this.checkControllerUp(), 5000);
     },
 
-    getControllerByName(name) {
-      for (let controllerId in this.controllers) {
-        if (this.controllers[controllerId].name === name) {
-          return this.controllers[controllerId];
+    async handleStations() {
+      const promises = [];
+      let highestPosition = 0;
+      for (let i in this.currentSetup.stations) {
+        const station = this.currentSetup.stations[i];
+
+        if (station.position > highestPosition) {
+          highestPosition = station.position;
         }
+
+        const plate = this.plates[(station.position * 2) - 1];
+        if (typeof plate === 'undefined') {
+          continue;
+        }
+
+        const handler = this.$refs['station' + station.id][0].handlePlate;
+        if (typeof handler !== 'function') {
+          continue;
+        }
+
+        promises.push(handler(plate));
       }
 
-      return null;
-    },
+      await Promise.all(promises);
 
-    async takePhoto() {
-      if (this.takingPhoto) {
-        return;
+      // Add a new plate at the beginning
+      this.plates.splice(0, 0, new Plate());
+
+      // Remove the last plate if it reached the end of the setup
+      if (this.plates.length > highestPosition * 2) {
+        this.plates.pop();
       }
-      this.takingPhoto = true;
-
-      const controller = this.getControllerByName('scanner');
-      if (controller === null) {
-        return;
-      }
-
-      const topFilename = this.project.id + '/piece' + this.currentPieceIndex + '_color';
-      const bottomFilename = this.project.id + '/piece' + this.currentPieceIndex;
-
-      const resultTop = await this.axios.get('/controllers/' + controller.id + '/take-photo/top/bottom/' + topFilename);
-      this.imageTopSrc = resultTop.data.src + '?' + Math.random();
-
-      const resultBottom = await this.axios.get('/controllers/' + controller.id + '/take-photo/bottom/top/' + bottomFilename);
-      this.imageBottomSrc = resultBottom.data.src + '?' + Math.random();
-
-      await Promise.all([
-          this.moveToNextPlate(),
-          this.savePiece(this.currentPieceIndex, bottomFilename, topFilename),
-      ]);
-
-      this.currentPieceIndex++;
-      this.takingPhoto = false;
-    },
-
-    async savePiece(pieceIndex, bottomFilename, topFilename) {
-      try {
-        const result = await this.axios.post('/projects/' + this.project.id + '/pieces/' + pieceIndex, null, {
-          params: {
-            silhouetteFilename: bottomFilename,
-            colorFilename: topFilename,
-          }
-        });
-
-        this.currentPiece = result.data;
-      } catch (error) {
-        this.currentPiece = null;
-      }
-    },
-
-    async resetConveyor() {
-      const controller = this.getControllerByName('conveyor');
-      if (controller === null) {
-        return;
-      }
-
-      await this.axios.get('/controllers/' + controller.id + '/call/reset');
-    },
-
-    async moveToNextPlate() {
-      const controller = this.getControllerByName('conveyor');
-      if (controller === null) {
-        return;
-      }
-
-      await this.axios.get('/controllers/' + controller.id + '/call/move-to-next-plate');
     }
   }
 }
 </script>
-
-<style scoped>
-  img.photo {
-    width: 100%;
-  }
-</style>

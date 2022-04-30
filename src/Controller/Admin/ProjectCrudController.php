@@ -4,6 +4,8 @@ namespace App\Controller\Admin;
 
 use App\Entity\Piece;
 use App\Entity\Project;
+use App\Repository\ControllerRepository;
+use App\Repository\SetupRepository;
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
 use Doctrine\ORM\EntityManagerInterface;
@@ -19,6 +21,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -29,6 +32,8 @@ class ProjectCrudController extends AbstractCrudController
         private readonly string $setsBaseDir,
         private readonly EntityManagerInterface $entityManager,
         private readonly SerializerInterface $serializer,
+        private readonly ControllerRepository $controllerRepository,
+        private readonly SetupRepository $setupRepository,
     ) {
     }
 
@@ -73,11 +78,13 @@ class ProjectCrudController extends AbstractCrudController
             'pageName' => 'run',
             'templatePath' => 'admin/project/run.html.twig',
             'entity' => $context->getEntity(),
+            'controllers' => $this->controllerRepository->findAll(),
+            'setups' => $this->setupRepository->findAll(),
         ]);
     }
 
-    #[Route('/projects/{id}/pieces/{pieceIndex}', methods: ['post'])]
-    public function savePiece(Project $project, int $pieceIndex, Request $request): JsonResponse
+    #[Route('/projects/{id}/pieces/{pieceIndex}/analyze')]
+    public function analyzePiece(Project $project, int $pieceIndex, Request $request): JsonResponse
     {
         $silhouetteFilename = $request->query->get('silhouetteFilename') . '.jpg';
         if (!$silhouetteFilename) {
