@@ -32,15 +32,9 @@
 </template>
 
 <script>
-import AutomaticConveyor from './Strategy/AutomaticConveyor';
-import PhotoTaker from './Strategy/PhotoTaker';
 import Plate from './Model/Plate';
 
 export default {
-  components: {
-    AutomaticConveyor,
-    PhotoTaker,
-  },
   data() {
     return {
       project: window.project,

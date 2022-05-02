@@ -51,7 +51,7 @@ class StationType extends AbstractType
         $strategies = [];
 
         $finder = new Finder();
-        foreach ($finder->files()->in(__DIR__ . '/../../../assets/run/Strategy') as $file) {
+        foreach ($finder->files()->in(__DIR__ . '/../../../assets/run/Strategy')->sortByName() as $file) {
             $strategy = $file->getFilenameWithoutExtension();
             $strategies[$strategy] = $strategy;
         }
