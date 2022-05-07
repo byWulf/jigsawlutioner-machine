@@ -45,6 +45,7 @@ export default {
       currentPiece: null,
       currentPieceIndex: 1,
       takingPhoto: false,
+      plateIndex: 0,
       plates: [],
     }
   },
@@ -116,7 +117,7 @@ export default {
       await Promise.all(promises);
 
       // Add a new plate at the beginning
-      this.plates.splice(0, 0, new Plate());
+      this.plates.splice(0, 0, new Plate(this.plateIndex++));
 
       // Remove the last plate if it reached the end of the setup
       if (this.plates.length > highestPosition * 2) {

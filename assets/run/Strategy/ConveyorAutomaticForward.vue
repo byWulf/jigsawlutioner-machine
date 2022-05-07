@@ -21,7 +21,7 @@ export default {
   },
   methods: {
     async resetConveyor() {
-      await this.axios.get('/controllers/' + this.controller.id + '/call/reset', {params: {rand: Math.random()}});
+      await this.axios.get('/controllers/' + this.controller.id + '/call/reset');
     },
 
     async moveConveyor() {

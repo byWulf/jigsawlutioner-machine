@@ -57,9 +57,18 @@ export default {
         const topFilename = this.project.id + '/piece' + pieceIndex + '_color';
         const bottomFilename = this.project.id + '/piece' + pieceIndex;
 
-        const resultTop = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/top/bottom/' + topFilename);
+        try {
+          const resultTop = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/top/bottom/' + topFilename);
 
-        const resultBottom = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/bottom/top/' + bottomFilename);
+          const resultBottom = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/bottom/top/' + bottomFilename);
+        } catch (error) {
+          plate.setData('piece', null);
+          plate.setReady();
+          this.$forceUpdate();
+          resolve();
+
+          return;
+        }
 
         resolve();
 

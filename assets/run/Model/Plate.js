@@ -3,6 +3,12 @@ export default class Plate {
 
     ready = true;
 
+    index;
+
+    constructor(index) {
+        this.index = index;
+    }
+
     getData() {
         return new Promise((resolve) => {
             let interval = setInterval(() => {

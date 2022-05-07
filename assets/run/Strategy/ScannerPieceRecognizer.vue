@@ -64,12 +64,13 @@ export default {
         resolve();
 
         try {
-          const result = await this.axios.get('/projects/' + this.project.id + '/pieces/' + pieceIndex + '/analyze', {
-            params: {
-              silhouetteFilename: bottomFilename,
-              colorFilename: topFilename,
-            }
-          });
+          // TODO: Find the existing piece and its position in the solution
+          // const result = await this.axios.get('/projects/' + this.project.id + '/pieces/' + pieceIndex + '/analyze', {
+          //   params: {
+          //     silhouetteFilename: bottomFilename,
+          //     colorFilename: topFilename,
+          //   }
+          // });
 
           plate.setData('piece', result.data);
         } catch (error) {
