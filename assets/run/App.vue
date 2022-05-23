@@ -123,7 +123,11 @@ export default {
       if (this.plates.length > highestPosition * 2) {
         this.plates.pop();
       }
-    }
+    },
+
+    setProject(project) {
+      this.project = window.project = project;
+    },
   }
 }
 </script>

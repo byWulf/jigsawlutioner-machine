@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\PieceRepository;
+use Bywulf\Jigsawlutioner\Dto\Piece as PieceDto;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -20,9 +21,9 @@ class Piece
     #[Groups('project')]
     private $pieceIndex;
 
-    #[ORM\Column(type: 'json', nullable: true)]
+    #[ORM\Column(type: 'piece', nullable: true)]
     #[Groups('project')]
-    private $data = [];
+    private $data;
 
     #[ORM\ManyToOne(targetEntity: Project::class, inversedBy: 'pieces')]
     #[ORM\JoinColumn(nullable: false)]
@@ -69,12 +70,12 @@ class Piece
         return $this;
     }
 
-    public function getData(): ?array
+    public function getData(): ?PieceDto
     {
         return $this->data;
     }
 
-    public function setData(?array $data): self
+    public function setData(?PieceDto $data): self
     {
         $this->data = $data;
 

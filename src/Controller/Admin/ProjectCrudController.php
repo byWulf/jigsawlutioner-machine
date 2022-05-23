@@ -22,7 +22,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -36,7 +35,7 @@ class ProjectCrudController extends AbstractCrudController
         private readonly SerializerInterface $serializer,
         private readonly ControllerRepository $controllerRepository,
         private readonly SetupRepository $setupRepository,
-        private readonly PieceRepository $pieceRepository,
+        private readonly PieceRepository $pieceRepository
     ) {
     }
 
@@ -86,6 +85,12 @@ class ProjectCrudController extends AbstractCrudController
         ]);
     }
 
+    #[Route('projects/{id}')]
+    public function getProject(Project $project): JsonResponse
+    {
+        return new JsonResponse($project);
+    }
+
     #[Route('/projects/{id}/pieces/{pieceIndex}/analyze')]
     public function analyzePiece(Project $project, int $pieceIndex, Request $request): JsonResponse
     {
@@ -122,7 +127,6 @@ class ProjectCrudController extends AbstractCrudController
             )
         );
         $piece->reduceData();
-        $pieceSerialized = $piece->jsonSerialize();
 
         $maskFilename =  $request->query->get('silhouetteFilename') . '_mask.png';
         imagepng($silhouetteImage, rtrim($this->setsBaseDir) . '/' . ltrim($maskFilename));
@@ -137,7 +141,7 @@ class ProjectCrudController extends AbstractCrudController
         $pieceEntity
             ->setProject($project)
             ->setPieceIndex($pieceIndex)
-            ->setData($pieceSerialized)
+            ->setData($piece)
             ->setImages([
                 'silhouette' => $silhouetteFilename,
                 'color' => $colorFilename,
@@ -148,6 +152,7 @@ class ProjectCrudController extends AbstractCrudController
         ;
 
         $this->entityManager->persist($pieceEntity);
+        $project->setSolved(false);
         $this->entityManager->flush();
 
         return new JsonResponse($this->serializer->serialize($pieceEntity, 'json', ['groups' => 'project']), json: true);
@@ -169,5 +174,16 @@ class ProjectCrudController extends AbstractCrudController
         $this->entityManager->flush();
 
         return new JsonResponse($this->serializer->serialize($piece, 'json', ['groups' => 'project']), json: true);
+    }
+
+    #[Route('/projects/{id}/solve')]
+    public function solvePuzzle(Project $project): JsonResponse
+    {
+        $project->setSolved(false);
+        $this->entityManager->flush();
+
+        // TODO: Start async process
+
+        return new JsonResponse(true);
     }
 }

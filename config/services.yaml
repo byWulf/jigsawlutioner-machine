@@ -29,3 +29,16 @@ services:
             $borderFinder: '@jigsawlutioner.border_finder'
             $sideFinder: '@jigsawlutioner.side_finder'
     Bywulf\Jigsawlutioner\Service\PieceAnalyzer: '@jigsawlutioner.piece_analyzer'
+
+    jigsawlutioner.side_matcher:
+        class: Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher
+
+    jigsawlutioner.matching_map_generator:
+        class: Bywulf\Jigsawlutioner\Service\MatchingMapGenerator
+        arguments:
+            $sideMatcher: '@jigsawlutioner.side_matcher'
+    Bywulf\Jigsawlutioner\Service\MatchingMapGenerator: '@jigsawlutioner.matching_map_generator'
+
+    jigsawlutioner.puzzle_solver:
+        class: Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver
+    Bywulf\Jigsawlutioner\Service\PuzzleSolver\PuzzleSolverInterface: '@jigsawlutioner.puzzle_solver'

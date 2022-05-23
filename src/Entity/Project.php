@@ -25,6 +25,10 @@ class Project
     #[Groups('project')]
     private $pieces;
 
+    #[ORM\Column(type: 'boolean')]
+    #[Groups('project')]
+    private $solved = false;
+
     public function __construct()
     {
         $this->pieces = new ArrayCollection();
@@ -74,6 +78,17 @@ class Project
             }
         }
 
+        return $this;
+    }
+
+    public function isSolved(): bool
+    {
+        return $this->solved;
+    }
+
+    public function setSolved(bool $solved): Project
+    {
+        $this->solved = $solved;
         return $this;
     }
 }
