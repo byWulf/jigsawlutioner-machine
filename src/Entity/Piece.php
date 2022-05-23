@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\PieceRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
@@ -46,6 +47,10 @@ class Piece
     #[ORM\Column(type: 'json')]
     #[Groups('project')]
     private $images = [];
+
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    #[Groups('project')]
+    private $box = null;
 
     public function getId(): ?int
     {
@@ -144,6 +149,18 @@ class Piece
     public function setImages(array $images): self
     {
         $this->images = $images;
+
+        return $this;
+    }
+
+    public function getBox(): ?int
+    {
+        return $this->box;
+    }
+
+    public function setBox(?int $box): self
+    {
+        $this->box = $box;
 
         return $this;
     }

@@ -26,15 +26,13 @@ export default {
       const rotation = getAverageRotation(sides[0].startPoint, sides[1].startPoint, sides[2].startPoint, sides[3].startPoint);
 
       try {
-        const result = await this.axios.get('/controllers/' + this.controller.id + '/call/rotate', {
+        await this.axios.get('/controllers/' + this.controller.id + '/call/rotate', {
           params: {
             degree: -rotation,
           },
         });
-
-        plate.setData('piece', result.data);
       } catch (error) {
-        plate.setData('piece', null);
+        plate.setData('error', 'rotation failed');
       }
     },
   }

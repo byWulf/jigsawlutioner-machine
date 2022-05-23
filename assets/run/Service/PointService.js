@@ -47,4 +47,23 @@ function getRotation(point1, point2)
     return normalizeRotation(rotation);
 }
 
-export { getAverageRotation };
+function getAveragePoint(points)
+{
+    if (points.length === 0) {
+        throw new Error('You have to provide at least one point to get their average.');
+    }
+
+    let xSum = 0;
+    let ySum = 0;
+    for (let i = 0; i < points.length; i++) {
+        xSum += points[i].x;
+        ySum += points[i].y;
+    }
+
+    return {
+        x: xSum / points.length,
+        y: ySum / points.length,
+    };
+}
+
+export { getAverageRotation, getAveragePoint };

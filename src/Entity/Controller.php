@@ -26,6 +26,7 @@ class Controller implements Stringable
     private $baseUri;
 
     #[ORM\Column(type: 'json')]
+    #[Groups(['controller', 'setup'])]
     private $parameters = [];
 
     private bool $up = false;
@@ -74,7 +75,7 @@ class Controller implements Stringable
 
     public function setParameters(array $parameters): self
     {
-        $this->parameters = $parameters;
+        $this->parameters = array_values($parameters);
 
         return $this;
     }

@@ -5,6 +5,7 @@ namespace App\Controller\Admin;
 use App\Entity\Piece;
 use App\Entity\Project;
 use App\Repository\ControllerRepository;
+use App\Repository\PieceRepository;
 use App\Repository\SetupRepository;
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
@@ -22,6 +23,7 @@ use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -34,6 +36,7 @@ class ProjectCrudController extends AbstractCrudController
         private readonly SerializerInterface $serializer,
         private readonly ControllerRepository $controllerRepository,
         private readonly SetupRepository $setupRepository,
+        private readonly PieceRepository $pieceRepository,
     ) {
     }
 
@@ -148,5 +151,23 @@ class ProjectCrudController extends AbstractCrudController
         $this->entityManager->flush();
 
         return new JsonResponse($this->serializer->serialize($pieceEntity, 'json', ['groups' => 'project']), json: true);
+    }
+
+    #[Route('/projects/{id}/pieces/{pieceIndex}/box/{box}', requirements: ['box' => '[0-9]*'])]
+    public function putPieceInBox(Project $project, int $pieceIndex, ?int $box): JsonResponse
+    {
+        $piece = $this->pieceRepository->findOneBy([
+            'project' => $project,
+            'pieceIndex' => $pieceIndex,
+        ]);
+
+        if ($piece === null) {
+            throw new NotFoundHttpException('Piece not found.');
+        }
+
+        $piece->setBox($box);
+        $this->entityManager->flush();
+
+        return new JsonResponse($this->serializer->serialize($piece, 'json', ['groups' => 'project']), json: true);
     }
 }

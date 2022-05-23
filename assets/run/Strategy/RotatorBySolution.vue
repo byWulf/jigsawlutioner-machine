@@ -28,15 +28,13 @@ export default {
       // TODO: add rotation to bring correct side up
 
       try {
-        const result = await this.axios.get('/controllers/' + this.controller.id + '/call/rotate', {
+        await this.axios.get('/controllers/' + this.controller.id + '/call/rotate', {
           params: {
             degree: -rotation,
           },
         });
-
-        plate.setData('piece', result.data);
       } catch (error) {
-        plate.setData('piece', null);
+        plate.setData('error', 'rotation failed');
       }
     },
   }
