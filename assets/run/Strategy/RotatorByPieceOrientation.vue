@@ -25,6 +25,8 @@ export default {
 
       const rotation = getAverageRotation(sides[0].startPoint, sides[1].startPoint, sides[2].startPoint, sides[3].startPoint);
 
+      plate.setNotReady('Rotating piece by ' + Math.round(rotation) + '°...');
+
       try {
         await this.axios.get('/controllers/' + this.controller.id + '/call/rotate', {
           params: {
@@ -34,6 +36,8 @@ export default {
       } catch (error) {
         plate.setData('error', 'rotation failed');
       }
+
+      plate.setReady();
     },
   }
 }

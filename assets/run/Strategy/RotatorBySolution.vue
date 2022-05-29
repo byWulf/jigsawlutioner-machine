@@ -27,6 +27,8 @@ export default {
 
       // TODO: add rotation to bring correct side up
 
+      plate.setNotReady('Rotating piece by ' + Math.round(rotation) + '°...');
+
       try {
         await this.axios.get('/controllers/' + this.controller.id + '/call/rotate', {
           params: {
@@ -36,6 +38,8 @@ export default {
       } catch (error) {
         plate.setData('error', 'rotation failed');
       }
+
+      plate.setReady();
     },
   }
 }

@@ -2,11 +2,14 @@ export default class Plate {
     data = {};
 
     ready = true;
+    action = null;
 
     index;
+    forceUpdate;
 
-    constructor(index) {
+    constructor(index, forceUpdate) {
         this.index = index;
+        this.forceUpdate = forceUpdate;
     }
 
     getData() {
@@ -22,13 +25,18 @@ export default class Plate {
 
     setData(key, value) {
         this.data[key] = value;
+        this.forceUpdate();
     }
 
-    setNotReady() {
+    setNotReady(action) {
         this.ready = false;
+        this.action = action;
+        this.forceUpdate();
     }
 
     setReady() {
         this.ready = true;
+        this.action = null;
+        this.forceUpdate();
     }
 }

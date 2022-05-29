@@ -44,7 +44,11 @@ export default {
   },
   methods: {
     async handlePlate(plate) {
+      plate.setNotReady('Solving puzzle...');
+
       await this.solve();
+
+      plate.setReady();
     },
 
     async solve() {

@@ -42,8 +42,6 @@ export default {
         }
 
         try {
-          plate.setNotReady();
-
           const center = getAveragePoint([
             data.piece.data.sides[0].startPoint,
             data.piece.data.sides[1].startPoint,
@@ -54,6 +52,8 @@ export default {
           const photoOffset = center.y / data.piece.data.imageHeight;
 
           const plateOffset = (7 /* scannable area length */ / 14 /* plate length */) * ((photoOffset * -2) + 1 /* move range of 0 to 1 to range of 1 to -1 */);
+
+          plate.setNotReady('Moving piece to box ' + this.currentBox);
 
           await this.axios.get('/controllers/' + this.controller.id + '/call/move-to-box', {
             params: {

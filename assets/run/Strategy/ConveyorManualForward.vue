@@ -26,7 +26,9 @@ export default {
 
       this.running = true;
 
+      this.$root.movePlates(500);
       await this.axios.get('/controllers/' + this.controller.id + '/call/move-to-next-plate');
+
       await this.$parent.handleStations();
 
       this.running = false;
