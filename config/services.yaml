@@ -1,0 +1,44 @@
+parameters:
+    sets_base_dir: '%kernel.project_dir%/public/sets'
+    sets_public_dir: 'sets'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        bind:
+            $setsBaseDir: '%sets_base_dir%'
+            $setsPublicDir: '%sets_public_dir%'
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    jigsawlutioner.border_finder:
+        class: Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder
+
+    jigsawlutioner.side_finder:
+        class: Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder
+
+    jigsawlutioner.piece_analyzer:
+        class: Bywulf\Jigsawlutioner\Service\PieceAnalyzer
+        arguments:
+            $borderFinder: '@jigsawlutioner.border_finder'
+            $sideFinder: '@jigsawlutioner.side_finder'
+    Bywulf\Jigsawlutioner\Service\PieceAnalyzer: '@jigsawlutioner.piece_analyzer'
+
+    jigsawlutioner.side_matcher:
+        class: Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher
+
+    jigsawlutioner.matching_map_generator:
+        class: Bywulf\Jigsawlutioner\Service\MatchingMapGenerator
+        arguments:
+            $sideMatcher: '@jigsawlutioner.side_matcher'
+    Bywulf\Jigsawlutioner\Service\MatchingMapGenerator: '@jigsawlutioner.matching_map_generator'
+
+    jigsawlutioner.puzzle_solver:
+        class: Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver
+    Bywulf\Jigsawlutioner\Service\PuzzleSolver\PuzzleSolverInterface: '@jigsawlutioner.puzzle_solver'

@@ -1,0 +1,25 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{% block head_stylesheets %}
+    {{ parent() }}
+    {{ encore_entry_link_tags('run') }}
+{% endblock %}
+
+{% block head_javascript %}
+    {{ parent() }}
+    {{ encore_entry_script_tags('run') }}
+    <script>
+        window.project = {{ entity.instance|serialize('json', {groups: 'project'})|raw }}
+        window.controllers = {{ controllers|serialize('json', {groups: 'controller'})|raw }};
+        window.setups = {{ setups|serialize('json', {groups: 'setup'})|raw }};
+        window.setsPublicDir = {{ sets_public_dir|serialize('json')|raw }}
+    </script>
+{% endblock %}
+
+{% block content_title %}
+    Running project "{{ entity.instance.name }}"
+{% endblock %}
+
+{% block main %}
+    <div id="app"></div>
+{% endblock %}

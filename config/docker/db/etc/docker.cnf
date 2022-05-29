@@ -1,0 +1,5 @@
+[mysqld]
+# docker optimizations
+skip_host_cache
+skip_name_resolve
+performance_schema = 0

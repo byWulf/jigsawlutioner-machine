@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  jigsawlutioner-machine-app:
+    container_name: jigsawlutioner-machine-app
+    build:
+      context: ./config/docker
+      dockerfile: Dockerfile
+    volumes:
+      - .:/home/jigsawlutionermachine/current
+    environment:
+      TZ: Europe/Berlin
+    hostname: machine.jigsawlutioner.local
+    ports:
+      - '8000:80'
+
+  jigsawlutioner-machine-db:
+    container_name: jigsawlutioner-machine-db
+    image: mysql/mysql-server:8.0.28
+    volumes:
+      - ./config/docker/db/etc:/etc/my.cnf.d
+      - ./config/docker/db/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - jigsawlutioner-machine-db:/var/lib/mysql
+    environment:
+      MYSQL_TCP_PORT: 3306
+      MYSQL_ROOT_PASSWORD: 'changeme'
+      TZ: Europe/Berlin
+    hostname: machine-db.jigsawlutioner.local
+    ports:
+      - '5432:3306'
+
+volumes:
+  jigsawlutioner-machine-db:
