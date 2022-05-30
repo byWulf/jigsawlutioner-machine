@@ -72,3 +72,11 @@ export default {
     font-size: 80%;
   }
 </style>
+
+<style>
+  body.ea-dark-scheme .plate {
+    background-color: #333333;
+    box-shadow: inset 0 0 40px #666666, inset 0 0 30px #666666, inset 0 0 20px #666666;
+    border: 1px solid #555555;
+  }
+</style>
