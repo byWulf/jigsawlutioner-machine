@@ -66,7 +66,15 @@ export default {
     waitForSolved() {
       return new Promise((resolve) => {
         const interval = setInterval(async () => {
-          const project = await this.getProject();
+          try {
+            const result = await this.axios.get('/projects/' + this.project.id)
+          } catch (error) {
+            console.error(error);
+            return;
+          }
+
+          const project = result.data;
+
           if (project.solved) {
             clearInterval(interval);
 
@@ -76,11 +84,6 @@ export default {
           }
         }, 5000);
       });
-    },
-
-    async getProject() {
-      const result = await this.axios.get('/projects/' + this.project.id);
-      return result.data;
     },
   }
 }
