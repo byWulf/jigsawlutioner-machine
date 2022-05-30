@@ -86,9 +86,9 @@ class ProjectCrudController extends AbstractCrudController
     }
 
     #[Route('projects/{id}')]
-    public function getProject(Project $project): JsonResponse
+    public function getProject(Project $project, SerializerInterface $serializer): JsonResponse
     {
-        return new JsonResponse($project);
+        return new JsonResponse($this->serializer->serialize($project, 'json', ['groups' => 'project']), json: true);
     }
 
     #[Route('/projects/{id}/pieces/{pieceIndex}/analyze')]

@@ -15,6 +15,7 @@ export default {
   data() {
     return {
       solving: false,
+      interval: null,
     };
   },
   computed: {
@@ -42,6 +43,12 @@ export default {
       return count;
     }
   },
+  beforeUnmount() {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+  },
   methods: {
     async handlePlate(plate) {
       plate.setNotReady('Solving puzzle...');
@@ -60,27 +67,27 @@ export default {
       await this.axios.get('/projects/' + this.project.id + '/solve');
 
       await this.waitForSolved();
-      // TODO: Doesn't work
     },
 
     waitForSolved() {
       return new Promise((resolve) => {
-        const interval = setInterval(async () => {
+        this.interval = setInterval(async () => {
           try {
-            const result = await this.axios.get('/projects/' + this.project.id)
+            const result = await this.axios.get('/projects/' + this.project.id);
+
+            const project = result.data;
+
+            if (project.solved) {
+              clearInterval(this.interval);
+              this.interval = null;
+
+              this.$root.setProject(project);
+              this.solving = false;
+
+              resolve();
+            }
           } catch (error) {
             console.error(error);
-            return;
-          }
-
-          const project = result.data;
-
-          if (project.solved) {
-            clearInterval(interval);
-
-            this.$root.setProject(project);
-
-            resolve();
           }
         }, 5000);
       });
