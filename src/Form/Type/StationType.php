@@ -27,8 +27,8 @@ class StationType extends AbstractType
         $builder->add('controller', EntityType::class, [
             'label' => 'Controller',
             'class' => Controller::class,
-            'required' => true,
-            'placeholder' => '-- Please choose --'
+            'required' => false,
+            'placeholder' => '-- No controller --'
         ]);
 
         $builder->add('strategy', ChoiceType::class, [

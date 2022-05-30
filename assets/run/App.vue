@@ -15,7 +15,7 @@
       <div class="col">
         <h3 v-if="stationData.station">
           {{ stationData.position }}. {{ stationData.station.strategy }}
-          <span :class="'badge ' + (controllers[stationData.station.controller.id].up ? 'badge-success' : 'badge-danger')">
+          <span v-if="stationData.station.controller" :class="'badge ' + (controllers[stationData.station.controller.id].up ? 'badge-success' : 'badge-danger')">
             <i class="fab fa-raspberry-pi"></i> {{ stationData.station.controller.name }}
           </span>
         </h3>

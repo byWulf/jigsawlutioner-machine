@@ -20,7 +20,7 @@ class Station
     private $setup;
 
     #[ORM\ManyToOne(targetEntity: Controller::class, inversedBy: 'stations')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn]
     #[Groups('setup')]
     private $controller;
 
