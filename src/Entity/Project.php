@@ -29,6 +29,18 @@ class Project
     #[Groups('project')]
     private $solved = false;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    #[Groups('project')]
+    private $solvingStatus;
+
+    #[ORM\Column(type: 'integer')]
+    #[Groups('project')]
+    private $solvedGroups;
+
+    #[ORM\Column(type: 'integer')]
+    #[Groups('project')]
+    private $biggestGroup;
+
     public function __construct()
     {
         $this->pieces = new ArrayCollection();
@@ -89,6 +101,39 @@ class Project
     public function setSolved(bool $solved): Project
     {
         $this->solved = $solved;
+        return $this;
+    }
+
+    public function getSolvingStatus(): ?string
+    {
+        return $this->solvingStatus;
+    }
+
+    public function setSolvingStatus(?string $solvingStatus): Project
+    {
+        $this->solvingStatus = $solvingStatus;
+        return $this;
+    }
+
+    public function getSolvedGroups(): int
+    {
+        return $this->solvedGroups;
+    }
+
+    public function setSolvedGroups(int $solvedGroups): self
+    {
+        $this->solvedGroups = $solvedGroups;
+        return $this;
+    }
+
+    public function getBiggestGroup(): int
+    {
+        return $this->biggestGroup;
+    }
+
+    public function setBiggestGroup(int $biggestGroup): self
+    {
+        $this->biggestGroup = $biggestGroup;
         return $this;
     }
 }

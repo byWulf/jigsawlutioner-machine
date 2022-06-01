@@ -2,6 +2,7 @@
 
 namespace App\Controller\Admin;
 
+use App\Dto\SolveMessage;
 use App\Entity\Piece;
 use App\Entity\Project;
 use App\Repository\ControllerRepository;
@@ -23,6 +24,8 @@ use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Process\Process;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -177,12 +180,12 @@ class ProjectCrudController extends AbstractCrudController
     }
 
     #[Route('/projects/{id}/solve')]
-    public function solvePuzzle(Project $project): JsonResponse
+    public function solvePuzzle(Project $project, MessageBusInterface $messageBus): JsonResponse
     {
         $project->setSolved(false);
         $this->entityManager->flush();
 
-        // TODO: Start async process
+        $messageBus->dispatch(new SolveMessage($project->getId()));
 
         return new JsonResponse(true);
     }

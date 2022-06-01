@@ -4,3 +4,7 @@ framework:
 
         transports:
             failed: 'doctrine://default?queue_name=failed'
+            solve: 'doctrine://default?queue_name=solve'
+
+        routing:
+            'App\Dto\SolveMessage': solve

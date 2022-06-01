@@ -1,5 +1,31 @@
 <template>
-  <div v-if="solving">Currently solving... please stand by...</div>
+  <div v-if="solving">
+    <div class="row">
+      <div class="col">
+        Solving: {{ project.solvingStatus }}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-2">Groups:</div>
+      <div class="col">
+        <div class="progress">
+          <div class="progress-bar" role="progressbar" :style="{width: (project.solvedGroups / piecesCount * 100) + '%'}" :aria-valuenow="project.solvedGroups" aria-valuemin="0" :aria-valuemax="piecesCount">
+            {{ project.solvedGroups }} / {{ piecesCount }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-2">Biggest group:</div>
+      <div class="col">
+        <div class="progress">
+          <div class="progress-bar" role="progressbar" :style="{width: (project.biggestGroup / piecesCount * 100) + '%'}" :aria-valuenow="project.biggestGroup" aria-valuemin="0" :aria-valuemax="piecesCount">
+            {{ project.biggestGroup }} / {{ piecesCount }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div v-else-if="project.solved">Solved! {{ piecesCount }} pieces in {{ groupsCount }} groups.</div>
   <div v-else>Waiting for the solving to start. {{ piecesCount }} pieces.</div>
 
@@ -15,7 +41,7 @@ export default {
   data() {
     return {
       solving: false,
-      interval: null,
+      timeout: null,
     };
   },
   computed: {
@@ -44,9 +70,9 @@ export default {
     }
   },
   beforeUnmount() {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
     }
   },
   methods: {
@@ -66,32 +92,32 @@ export default {
       this.solving = true;
       await this.axios.get('/projects/' + this.project.id + '/solve');
 
-      await this.waitForSolved();
+      await this.checkForSolved();
     },
 
-    waitForSolved() {
-      return new Promise((resolve) => {
-        this.interval = setInterval(async () => {
-          try {
-            const result = await this.axios.get('/projects/' + this.project.id);
+    async checkForSolved() {
+      try {
+        const result = await this.axios.get('/projects/' + this.project.id);
 
-            const project = result.data;
+        const project = result.data;
+        this.$root.setProject(project);
 
-            if (project.solved) {
-              clearInterval(this.interval);
-              this.interval = null;
+        if (project.solved) {
+          clearInterval(this.interval);
+          this.interval = null;
 
-              this.$root.setProject(project);
-              this.solving = false;
+          this.solving = false;
 
-              resolve();
-            }
-          } catch (error) {
-            console.error(error);
-          }
-        }, 5000);
-      });
-    },
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+
+      // Check again after 1 second
+      await this.$root.sleep(1000);
+      await this.checkForSolved();
+    }
   }
 }
 </script>
