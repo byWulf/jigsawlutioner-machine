@@ -37,19 +37,20 @@ export default {
             data.piece.data.sides[3].startPoint,
           ]);
 
-          const photoOffset = center.y / data.piece.data.imageHeight;
-
-          const pieceOffset = (7 /* scannable area length */ / 14 /* plate length */) * ((photoOffset * -2) + 1 /* move range of 0 to 1 to range of 1 to -1 */);
+          const pieceXOffset = ((center.x / data.piece.data.imageWidth) - 0.5) * 6.4 /* scannable area width */;
+          const pieceYOffset = (7 /* scannable area length */ / 14 /* plate length */) * (((center.y / data.piece.data.imageHeight) * -2) + 1 /* move range of 0 to 1 to range of 1 to -1 */);
 
           plate.setNotReady('Placing piece on board to ' + this.x + '/' + this.y + '...');
 
           await this.axios.get('/controllers/' + this.controller.id + '/call/place', {
             params: {
-              pieceOffset: -pieceOffset,
+              pieceOffset: -pieceYOffset,
               plateOffset: 4 * this.y,
-              boardOffset: 4 * this.x, // TODO: Add horizontal piece offset
+              boardOffset: 4 + 4 * this.x - pieceXOffset,
             },
           });
+
+          plate.setData('piece', null);
 
           resolve();
         } catch (error) {
@@ -60,7 +61,7 @@ export default {
           return;
         }
 
-        if (this.y >= 5) {
+        if (this.y >= 6) {
           this.x++;
           this.y = 0;
         } else {
