@@ -35,11 +35,11 @@ class Project
 
     #[ORM\Column(type: 'integer')]
     #[Groups('project')]
-    private $solvedGroups;
+    private $solvedGroups = 0;
 
     #[ORM\Column(type: 'integer')]
     #[Groups('project')]
-    private $biggestGroup;
+    private $biggestGroup = 0;
 
     public function __construct()
     {
