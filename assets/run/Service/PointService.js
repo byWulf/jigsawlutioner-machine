@@ -66,4 +66,15 @@ function getAveragePoint(points)
     };
 }
 
-export { getAverageRotation, getAveragePoint };
+function rotatePoint(centerPoint, point, angle) {
+    const radians = (Math.PI / 180) * angle;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+
+    return {
+        x: (cos * (point.x - centerPoint.x)) + (sin * (point.y - centerPoint.y)) + centerPoint.x,
+        y: (cos * (point.y - centerPoint.y)) - (sin * (point.x - centerPoint.x)) + centerPoint.y,
+    };
+}
+
+export { getAverageRotation, getAveragePoint, rotatePoint };

@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import { getAverageRotation } from '../Service/PointService';
+import { getAverageRotation, rotatePoint } from '../Service/PointService';
 
 export default {
   props: ['controller', 'project'],
@@ -23,21 +23,27 @@ export default {
 
       const sides = data.piece.data.sides;
 
-      const rotation = getAverageRotation(sides[0].startPoint, sides[1].startPoint, sides[2].startPoint, sides[3].startPoint);
+      const rotation = -getAverageRotation(sides[0].startPoint, sides[1].startPoint, sides[2].startPoint, sides[3].startPoint) - 90;
 
       plate.setNotReady('Rotating piece by ' + Math.round(rotation) + '°...');
 
       try {
         await this.axios.get('/controllers/' + this.controller.id + '/call/rotate', {
           params: {
-            degree: -rotation,
+            degree: rotation,
           },
         });
+
+        const centerPoint = {x: data.piece.data.imageWidth / 2, y: data.piece.data.imageHeight / 2};
+        for (let i in sides) {
+          sides[i].startPoint = rotatePoint(centerPoint, sides[i].startPoint, -rotation);
+          sides[i].endPoint = rotatePoint(centerPoint, sides[i].endPoint, -rotation);
+        }
+
+        plate.setData('rotation', rotation);
       } catch (error) {
         plate.setData('error', 'rotation failed');
       }
-
-      // TODO: Recalculate bounding box of piece
 
       plate.setReady();
     },

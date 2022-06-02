@@ -6,7 +6,7 @@
       </div>
       <div class="row">
         <div class="col-2 plate-image">
-          <img v-if="plate.data.piece" :src="setsPublicDir + '/' + plate.data.piece.images.transparentSmall">
+          <img v-if="plate.data.piece" :src="setsPublicDir + '/' + plate.data.piece.images.transparentSmall" :style="{transform: 'rotate(' + (plate.data.rotation || 0) + 'deg)'}">
         </div>
         <div class="col pt-2">
           <div class="row" v-if="plate.action">
