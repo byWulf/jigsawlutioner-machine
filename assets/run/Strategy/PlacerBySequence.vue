@@ -11,6 +11,7 @@ export default {
     return {
       x: 0,
       y: 0,
+      movements: 0,
     };
   },
   inject: [
@@ -51,8 +52,6 @@ export default {
           });
 
           plate.setData('piece', null);
-
-          resolve();
         } catch (error) {
           console.log('PlacerBySequence', error);
           plate.setData('error', 'placing piece failed');
@@ -67,6 +66,16 @@ export default {
         } else {
           this.y++;
         }
+
+        this.movements++;
+
+        if (this.movements > 20) {
+          await this.reset();
+          this.movements = 0;
+        }
+
+        plate.setReady();
+        resolve();
       });
     },
   }

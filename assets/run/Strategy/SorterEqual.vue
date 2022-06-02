@@ -14,6 +14,7 @@ export default {
     return {
       currentBox: 0,
       boxCount: null,
+      movements: 0,
     };
   },
   inject: [
@@ -63,8 +64,6 @@ export default {
           });
 
           plate.setData('piece', null);
-
-          resolve();
         } catch (error) {
           console.log('SortEqual', error);
           plate.setData('error', 'moving to box failed');
@@ -81,7 +80,15 @@ export default {
           plate.setData('error', 'saving box failed');
         }
 
+        this.movements++;
+
+        if (this.movements > 20) {
+          await this.reset();
+          this.movements = 0;
+        }
+
         plate.setReady();
+        resolve();
       });
     },
   }
