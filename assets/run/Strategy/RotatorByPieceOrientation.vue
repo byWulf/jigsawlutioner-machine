@@ -23,7 +23,7 @@ export default {
 
       const sides = data.piece.data.sides;
 
-      const rotation = -getAverageRotation(sides[0].startPoint, sides[1].startPoint, sides[2].startPoint, sides[3].startPoint) - 90;
+      const rotation = -getAverageRotation(sides[0].startPoint, sides[1].startPoint, sides[2].startPoint, sides[3].startPoint);
 
       plate.setNotReady('Rotating piece by ' + Math.round(rotation) + '°...');
 
