@@ -62,6 +62,8 @@ export default {
             },
           });
 
+          plate.setData('piece', null);
+
           resolve();
         } catch (error) {
           console.log('SortEqual', error);
@@ -73,8 +75,6 @@ export default {
 
         try {
           await this.axios.get('/projects/' + this.project.id + '/pieces/' + data.piece.pieceIndex + '/box/' + this.currentBox);
-
-          plate.setData('piece', null);
 
           this.currentBox = (this.currentBox + 1) % this.boxCount;
         } catch (error) {
