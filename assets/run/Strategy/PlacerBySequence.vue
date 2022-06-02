@@ -1,8 +1,5 @@
 <template>
   <button @click="reset()" class="btn btn-warning">Reset</button>
-  <div v-if="boxCount === null" class="alert alert-danger">
-    No boxCount specified. Please add "boxCount=X" (with X as the boxCount) to the list of the parameters of the controller.
-  </div>
 </template>
 
 <script>
@@ -12,22 +9,13 @@ export default {
   props: ['controller', 'project'],
   data() {
     return {
-      currentBox: 0,
-      boxCount: null,
+      x: 0,
+      y: 0,
     };
   },
   inject: [
     'axios',
   ],
-  created() {
-    for (let key in this.controller.parameters) {
-      const match = this.controller.parameters[key].match(/^boxCount=(\d+)$/);
-      if (match !== null) {
-        this.boxCount = parseInt(match[1], 10);
-        break;
-      }
-    }
-  },
   methods: {
     async reset() {
       await this.axios.get('/controllers/' + this.controller.id + '/call/reset');
@@ -53,35 +41,31 @@ export default {
 
           const pieceOffset = (7 /* scannable area length */ / 14 /* plate length */) * ((photoOffset * -2) + 1 /* move range of 0 to 1 to range of 1 to -1 */);
 
-          plate.setNotReady('Moving piece to box ' + this.currentBox);
+          plate.setNotReady('Placing piece on board to ' + this.x + '/' + this.y + '...');
 
-          await this.axios.get('/controllers/' + this.controller.id + '/call/move-to-box', {
+          await this.axios.get('/controllers/' + this.controller.id + '/call/place', {
             params: {
-              box: this.currentBox,
-              offset: pieceOffset,
+              pieceOffset: -pieceOffset,
+              plateOffset: 4 * this.y,
+              boardOffset: 4 * this.x, // TODO: Add horizontal piece offset
             },
           });
 
           resolve();
         } catch (error) {
-          console.log('SortEqual', error);
-          plate.setData('error', 'moving to box failed');
+          console.log('PlacerBySequence', error);
+          plate.setData('error', 'placing piece failed');
           plate.setReady();
           resolve();
           return;
         }
 
-        try {
-          await this.axios.get('/projects/' + this.project.id + '/pieces/' + data.piece.pieceIndex + '/box/' + this.currentBox);
-
-          plate.setData('piece', null);
-
-          this.currentBox = (this.currentBox + 1) % this.boxCount;
-        } catch (error) {
-          plate.setData('error', 'saving box failed');
+        if (this.y >= 5) {
+          this.x++;
+          this.y = 0;
+        } else {
+          this.y++;
         }
-
-        plate.setReady();
       });
     },
   }

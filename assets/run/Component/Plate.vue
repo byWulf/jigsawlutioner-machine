@@ -27,6 +27,13 @@
               </div>
             </div>
           </template>
+          <template v-if="plate.data.error">
+            <div class="row">
+              <div class="col">
+                <strong class="text-danger">{{ plate.data.error }}</strong>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </template>

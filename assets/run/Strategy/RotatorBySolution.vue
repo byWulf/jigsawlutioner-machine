@@ -39,6 +39,8 @@ export default {
         plate.setData('error', 'rotation failed');
       }
 
+      // TODO: Recalculate bounding box of piece
+
       plate.setReady();
     },
   }
