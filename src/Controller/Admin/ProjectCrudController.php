@@ -8,8 +8,14 @@ use App\Entity\Project;
 use App\Repository\ControllerRepository;
 use App\Repository\PieceRepository;
 use App\Repository\SetupRepository;
+use App\Service\PieceService;
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
+use Bywulf\Jigsawlutioner\Dto\Piece as PieceDto;
+use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
+use Bywulf\Jigsawlutioner\Exception\PieceAnalyzerException;
+use Bywulf\Jigsawlutioner\Exception\SideParsingException;
 use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
+use Bywulf\Jigsawlutioner\Service\PieceRecognizer;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
@@ -21,6 +27,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use InvalidArgumentException;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -38,7 +45,10 @@ class ProjectCrudController extends AbstractCrudController
         private readonly SerializerInterface $serializer,
         private readonly ControllerRepository $controllerRepository,
         private readonly SetupRepository $setupRepository,
-        private readonly PieceRepository $pieceRepository
+        private readonly PieceRepository $pieceRepository,
+        private readonly PieceService $pieceService,
+        private readonly PieceRecognizer $pieceRecognizer,
+        private readonly Filesystem $filesystem,
     ) {
     }
 
@@ -118,17 +128,25 @@ class ProjectCrudController extends AbstractCrudController
         $resizedColorImage = imagecreatetruecolor((int) round(imagesx($colorImage) / 10), (int) round(imagesy($colorImage) / 10));
         imagecopyresampled($resizedColorImage, $colorImage, 0, 0, 0,0, (int) round(imagesx($colorImage) / 10), (int) round(imagesy($colorImage) / 10), imagesx($colorImage), imagesy($colorImage));
 
-        $piece = $this->pieceAnalyzer->getPieceFromImage(
-            $pieceIndex,
-            $silhouetteImage,
-            new ByWulfBorderFinderContext(
-                threshold: 0.65,
-                transparentImages: [
-                    $colorImage,
-                    $resizedColorImage,
-                ]
-            )
-        );
+        try {
+            $piece = $this->pieceAnalyzer->getPieceFromImage(
+                $pieceIndex,
+                $silhouetteImage,
+                new ByWulfBorderFinderContext(
+                    threshold: 0.65,
+                    transparentImages: [
+                        $colorImage,
+                        $resizedColorImage,
+                    ]
+                )
+            );
+        } catch (BorderParsingException|PieceAnalyzerException|SideParsingException $exception) {
+            $this->filesystem->remove(rtrim($this->setsBaseDir) . '/' . ltrim($silhouetteFilename));
+            $this->filesystem->remove(rtrim($this->setsBaseDir) . '/' . ltrim($colorFilename));
+
+            throw $exception;
+        }
+
         $piece->reduceData();
 
         $maskFilename =  $request->query->get('silhouetteFilename') . '_mask.png';
@@ -145,6 +163,7 @@ class ProjectCrudController extends AbstractCrudController
             ->setProject($project)
             ->setPieceIndex($pieceIndex)
             ->setData($piece)
+            ->setClassification($this->pieceService->getClassification($piece))
             ->setImages([
                 'silhouette' => $silhouetteFilename,
                 'color' => $colorFilename,
@@ -159,6 +178,52 @@ class ProjectCrudController extends AbstractCrudController
         $this->entityManager->flush();
 
         return new JsonResponse($this->serializer->serialize($pieceEntity, 'json', ['groups' => 'project']), json: true);
+    }
+
+    #[Route('/projects/{id}/pieces/recognize')]
+    public function recognizePiece(Project $project, Request $request): JsonResponse
+    {
+        $silhouetteFilename = $request->query->get('silhouetteFilename') . '.jpg';
+        if (!$silhouetteFilename) {
+            throw new InvalidArgumentException('Query parameter "silhouetteFilename" missing.');
+        }
+        $silhouetteImage = imagecreatefromjpeg(rtrim($this->setsBaseDir) . '/' . ltrim($silhouetteFilename));
+        if ($silhouetteImage === false) {
+            throw new InvalidArgumentException('"silhouetteFilename" could not be read.');
+        }
+
+        try {
+            $piece = $this->pieceAnalyzer->getPieceFromImage(
+                0,
+                $silhouetteImage,
+                new ByWulfBorderFinderContext(
+                    threshold: 0.65,
+                )
+            );
+
+            $possibleEntities = $this->pieceRepository->findby([
+                'project' => $project,
+                'classification' => $this->pieceService->getClassification($piece)
+            ]);
+
+            $existingPieces = array_map(fn (Piece $piece): PieceDto => $piece->getData(), $possibleEntities);
+
+            $piece = $this->pieceRecognizer->findExistingPiece($piece, $existingPieces);
+
+            if ($piece !== null) {
+                foreach ($possibleEntities as $entity) {
+                    if ($entity->getPieceIndex() === $piece->getIndex()) {
+                        $entity->setData($piece);
+                        // TODO: Save correct rotation so the original image is rotated as the newly scanned piece
+                        return new JsonResponse($this->serializer->serialize($entity, 'json', ['groups' => 'project']), json: true);
+                    }
+                }
+            }
+
+            return new JsonResponse(null);
+        } finally {
+            $this->filesystem->remove(rtrim($this->setsBaseDir) . '/' . ltrim($silhouetteFilename));
+        }
     }
 
     #[Route('/projects/{id}/pieces/{pieceIndex}/box/{box}', requirements: ['box' => '[0-9]*'])]

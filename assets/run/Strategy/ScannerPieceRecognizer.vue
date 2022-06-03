@@ -18,10 +18,10 @@ export default {
 
         plate.setNotReady('Scanning piece...');
 
-        const bottomFilename = this.project.id + '/piece_lookup' + pieceIndex;
+        const filename = this.project.id + '/piece_lookup' + pieceIndex;
 
         try {
-          const resultBottom = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/bottom/top/' + bottomFilename);
+          await this.axios.get('/controllers/' + this.controller.id + '/take-photo/bottom/top/' + filename);
         } catch (error) {
           plate.setData('piece', null);
           plate.setReady();
@@ -35,12 +35,11 @@ export default {
         plate.setNotReady('Analyzing piece...');
 
         try {
-          // TODO: Find the existing piece and its position in the solution
-          // const result = await this.axios.get('/projects/' + this.project.id + '/pieces/recognize' + pieceIndex, {
-          //   params: {
-          //     filename: bottomFilename,
-          //   }
-          // });
+          const result = await this.axios.get('/projects/' + this.project.id + '/pieces/recognize', {
+            params: {
+              silhouetteFilename: filename,
+            }
+          });
 
           plate.setData('piece', result.data);
         } catch (error) {

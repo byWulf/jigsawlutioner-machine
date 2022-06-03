@@ -51,7 +51,14 @@ class Piece
 
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     #[Groups('project')]
-    private $box = null;
+    private $box;
+
+    #[ORM\Column(type: 'string', nullable: true)]
+    #[Groups('project')]
+    private $classification;
+
+    #[Groups('project')]
+    private $rotation = 0;
 
     public function getId(): ?int
     {
@@ -163,6 +170,28 @@ class Piece
     {
         $this->box = $box;
 
+        return $this;
+    }
+
+    public function getClassification(): ?string
+    {
+        return $this->classification;
+    }
+
+    public function setClassification(?string $classification): self
+    {
+        $this->classification = $classification;
+        return $this;
+    }
+
+    public function getRotation(): float
+    {
+        return $this->rotation;
+    }
+
+    public function setRotation(float $rotation): Piece
+    {
+        $this->rotation = $rotation;
         return $this;
     }
 }

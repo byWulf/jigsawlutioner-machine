@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "be133ac195a65f867a87ff44e644bbd5",
+    "content-hash": "63fe3262ae5ab406f71c66096fed465f",
     "packages": [
         {
             "name": "amphp/amp",
@@ -557,16 +557,16 @@
         },
         {
             "name": "bywulf/jigsawlutioner",
-            "version": "2.1.0",
+            "version": "2.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/byWulf/jigsawlutioner.git",
-                "reference": "10ed89eff8d93ef1d6da52a12486eef3aa030f8f"
+                "reference": "9faa51c85750c2c5aeff3af9d93ca65528a4926e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/byWulf/jigsawlutioner/zipball/10ed89eff8d93ef1d6da52a12486eef3aa030f8f",
-                "reference": "10ed89eff8d93ef1d6da52a12486eef3aa030f8f",
+                "url": "https://api.github.com/repos/byWulf/jigsawlutioner/zipball/9faa51c85750c2c5aeff3af9d93ca65528a4926e",
+                "reference": "9faa51c85750c2c5aeff3af9d93ca65528a4926e",
                 "shasum": ""
             },
             "require": {
@@ -604,9 +604,9 @@
             "description": "Jigsaw puzzle solving algorithm",
             "support": {
                 "issues": "https://github.com/byWulf/jigsawlutioner/issues",
-                "source": "https://github.com/byWulf/jigsawlutioner/tree/2.1.0"
+                "source": "https://github.com/byWulf/jigsawlutioner/tree/2.2.0"
             },
-            "time": "2022-04-30T08:14:55+00:00"
+            "time": "2022-06-03T11:53:33+00:00"
         },
         {
             "name": "doctrine/annotations",

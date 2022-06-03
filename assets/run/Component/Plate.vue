@@ -6,6 +6,7 @@
       </div>
       <div class="row">
         <div class="col-2 plate-image">
+          <!-- TODO: use rotation from piece (plus the rotation from the plate data) -->
           <img v-if="plate.data.piece" :src="setsPublicDir + '/' + plate.data.piece.images.transparentSmall" :style="{transform: 'rotate(' + (plate.data.rotation || 0) + 'deg)'}">
         </div>
         <div class="col pt-2">

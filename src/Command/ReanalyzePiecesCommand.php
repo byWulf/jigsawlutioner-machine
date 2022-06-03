@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\Piece as PieceEntity;
 use App\Repository\PieceRepository;
+use App\Service\PieceService;
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
@@ -25,7 +26,8 @@ class ReanalyzePiecesCommand extends Command
         private readonly PieceRepository $pieceRepository,
         private readonly string $setsBaseDir,
         private readonly PieceAnalyzer $pieceAnalyzer,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly PieceService $pieceService,
     ) {
         parent::__construct();
     }
@@ -47,6 +49,7 @@ class ReanalyzePiecesCommand extends Command
             }
 
             $pieceEntity->setData($piece);
+            $pieceEntity->setClassification($this->pieceService->getClassification($piece));
 
             $io->progressAdvance();
         }

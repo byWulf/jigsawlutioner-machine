@@ -42,3 +42,7 @@ services:
     jigsawlutioner.puzzle_solver:
         class: Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver
     Bywulf\Jigsawlutioner\Service\PuzzleSolver\PuzzleSolverInterface: '@jigsawlutioner.puzzle_solver'
+
+    jigsawlutioner.piece_recognizer:
+        class: Bywulf\Jigsawlutioner\Service\PieceRecognizer
+    Bywulf\Jigsawlutioner\Service\PieceRecognizer: '@jigsawlutioner.piece_recognizer'
