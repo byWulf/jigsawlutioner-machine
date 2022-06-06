@@ -43,19 +43,19 @@ export default {
       solving: false,
       timeout: null,
 
-      width: 16,
-      height: 8,
+      width: 20,
+      height: 10,
     };
   },
   computed: {
     piecesCount() {
-      return project.pieces.length;
+      return this.project.pieces.length;
     },
     groupsCount() {
       let count = 0;
       const analyzedGroups = [];
-      for (let i in project.pieces) {
-        const groupIndex = project.pieces[i].groupIndex;
+      for (let i in this.project.pieces) {
+        const groupIndex = this.project.pieces[i].groupIndex;
 
         if (groupIndex === null) {
           continue;
@@ -114,6 +114,7 @@ export default {
 
         const project = result.data;
         this.$root.setProject(project);
+        this.$forceUpdate();
 
         if (project.solved) {
           clearInterval(this.interval);

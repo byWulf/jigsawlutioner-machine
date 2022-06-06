@@ -144,10 +144,12 @@ export default {
 
     setProject(project) {
       this.project = window.project = project;
+      this.$forceUpdate();
     },
 
     setBoards(boards) {
       this.boards = boards;
+      this.$forceUpdate();
     },
 
     sleep(time, maxTime) {

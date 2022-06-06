@@ -55,6 +55,7 @@ export default {
           });
 
           plate.setData('piece', result.data);
+          this.project.solved = false;
         } catch (error) {
           plate.setData('piece', null);
         }

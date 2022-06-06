@@ -47,8 +47,8 @@ export default {
           await this.axios.get('/controllers/' + this.controller.id + '/call/place', {
             params: {
               pieceOffset: -pieceYOffset,
-              plateOffset: 3.5 * y,
-              boardOffset: 4 + 3.5 * x - pieceXOffset,
+              plateOffset: 2.8 * y,
+              boardOffset: 4 + 2.8 * x - pieceXOffset,
             },
           });
 
