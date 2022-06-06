@@ -28,17 +28,6 @@ export default {
           return;
         }
 
-        if (
-            data.piece.groupIndex !== data.board.groupIndex ||
-            data.piece.x < data.board.startX ||
-            data.piece.x > data.board.endX ||
-            data.piece.y < data.board.startY ||
-            data.piece.y > data.board.endY
-        ) {
-          resolve();
-          return;
-        }
-
         const x = data.piece.x - data.board.startX;
         const y = data.piece.y - data.board.startY;
 

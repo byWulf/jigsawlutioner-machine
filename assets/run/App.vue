@@ -19,7 +19,7 @@
             <i class="fab fa-raspberry-pi"></i> {{ stationData.station.controller.name }}
           </span>
         </h3>
-        <component v-if="stationData.station" :ref="'station' + stationData.station.id" :is="stationData.station.strategy" :controller="stationData.station.controller" :project="project"></component>
+        <component v-if="stationData.station" :ref="'station' + stationData.station.id" :is="stationData.station.strategy" :controller="stationData.station.controller" :project="project" :boards="boards"></component>
       </div>
     </div>
   </template>
@@ -37,6 +37,7 @@ export default {
     return {
       project: window.project,
       setups: window.setups,
+      boards: [],
       currentSetup: null,
       controllers: {},
       currentPiece: null,
@@ -143,6 +144,10 @@ export default {
 
     setProject(project) {
       this.project = window.project = project;
+    },
+
+    setBoards(boards) {
+      this.boards = boards;
     },
 
     sleep(time, maxTime) {
