@@ -28,7 +28,7 @@
               </div>
             </div>
           </template>
-          <template v-if="plate.data.board">
+          <template v-if="plate.data.piece && plate.data.board">
             <div class="row">
               <div class="col">
                 <strong>Target board:</strong> {{ plate.data.board.boardIndex + 1 }}
