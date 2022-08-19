@@ -89,15 +89,12 @@ export default {
 
       await this.solve();
 
-      if (this.boards === null) {
-        this.splitIntoBoards();
-      }
-
       plate.setReady();
     },
 
     async solve() {
       if (this.project.solved) {
+        this.splitIntoBoards();
         return;
       }
 
@@ -106,6 +103,8 @@ export default {
       await this.axios.get('/projects/' + this.project.id + '/solve');
 
       await this.checkForSolved();
+
+      this.splitIntoBoards();
     },
 
     async checkForSolved() {

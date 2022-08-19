@@ -6,7 +6,9 @@
   <template v-else-if="project.solved">
     <div class="row">
       <div class="col">Select boards:</div>
-      <div v-for="(boardIndexes, boxIndex) in boardToBoxMapping" class="col">
+    </div>
+    <div class="row">
+      <div v-for="(boardIndexes, boxIndex) in boardToBoxMapping" :class="boards.length <= 8 ? 'col' : (boards.length <= 16 ? 'col-6' : 'col-12')">
         Box {{ boxIndex + 1 }}:
         <div class="btn-group" v-if="boards">
           <button v-for="(board, index) in boards" :class="'btn ' + (boardIndexes.indexOf(index) > -1 ? 'btn-primary active' : 'btn-secondary')" @click="toggleBoardToBox(boxIndex, index)">{{ index + 1}}</button>
