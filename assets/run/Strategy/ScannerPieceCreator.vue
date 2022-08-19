@@ -5,6 +5,15 @@ export default {
     return {
       setsPublicDir: window.setsPublicDir,
       currentPieceIndex: 1,
+      colorImages: false
+    }
+  },
+  created() {
+    for (let key in this.controller.parameters) {
+      if (this.controller.parameters[key] === 'colorImages=1') {
+        this.colorImages = true;
+        break;
+      }
     }
   },
   mounted() {
@@ -31,9 +40,11 @@ export default {
         const bottomFilename = this.project.id + '/piece' + pieceIndex;
 
         try {
-          const resultTop = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/top/bottom/' + topFilename);
+          if (this.colorImages) {
+            const resultTop = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/top/bottom/' + topFilename);
+          }
 
-          const resultBottom = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/bottom/top/' + bottomFilename);
+          const resultBottom = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/bottom/' + (this.colorImages ? 'top' : 'bottom') + '/' + bottomFilename);
         } catch (error) {
           plate.setData('piece', null);
           plate.setReady();
@@ -50,7 +61,7 @@ export default {
           const result = await this.axios.get('/projects/' + this.project.id + '/pieces/' + pieceIndex + '/analyze', {
             params: {
               silhouetteFilename: bottomFilename,
-              colorFilename: topFilename,
+              colorFilename: this.colorImages ? topFilename : bottomFilename,
             }
           });
 

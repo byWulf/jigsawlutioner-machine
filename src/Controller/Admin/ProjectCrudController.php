@@ -135,7 +135,6 @@ class ProjectCrudController extends AbstractCrudController
                 new ByWulfBorderFinderContext(
                     threshold: 0.65,
                     transparentImages: [
-                        $colorImage,
                         $resizedColorImage,
                     ]
                 )
@@ -152,9 +151,6 @@ class ProjectCrudController extends AbstractCrudController
         $maskFilename =  $request->query->get('silhouetteFilename') . '_mask.png';
         imagepng($silhouetteImage, rtrim($this->setsBaseDir) . '/' . ltrim($maskFilename));
 
-        $transparentFilename =  $request->query->get('silhouetteFilename') . '_transparent.png';
-        imagepng($colorImage, rtrim($this->setsBaseDir) . '/' . ltrim($transparentFilename));
-
         $transparentSmallFilename = $request->query->get('silhouetteFilename') . '_transparent_small.png';
         imagepng($resizedColorImage, rtrim($this->setsBaseDir) . '/' . ltrim($transparentSmallFilename));
 
@@ -166,9 +162,8 @@ class ProjectCrudController extends AbstractCrudController
             ->setClassification($this->pieceService->getClassification($piece))
             ->setImages([
                 'silhouette' => $silhouetteFilename,
-                'color' => $colorFilename,
+                'color' => $request->query->get('colorFilename') ? $colorFilename : null,
                 'mask' => $maskFilename,
-                'transparent' => $transparentFilename,
                 'transparentSmall' => $transparentSmallFilename,
             ])
         ;

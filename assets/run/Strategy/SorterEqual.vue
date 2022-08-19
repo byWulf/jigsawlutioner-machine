@@ -69,8 +69,6 @@ export default {
 
       try {
         await this.axios.get('/projects/' + this.project.id + '/pieces/' + data.piece.pieceIndex + '/box/' + this.currentBox);
-
-        this.currentBox = (this.currentBox + 1) % this.boxCount;
       } catch (error) {
         console.log(error);
         plate.setData('error', 'saving box failed');
@@ -81,6 +79,7 @@ export default {
       if (this.movements > 20) {
         await this.reset();
         this.movements = 0;
+        this.currentBox = (this.currentBox + 1) % this.boxCount;
       }
 
       plate.setData('piece', null);
