@@ -3,6 +3,9 @@
     <div class="col">
       <button v-for="setup in setups" @click="currentSetup = setup" :class="'btn btn-' + (setup === currentSetup ? 'primary' : 'secondary')">{{ setup.name }}</button>
     </div>
+    <div class="col-3">
+      <h2>Scanned pieces: {{ project.pieces.length }}</h2>
+    </div>
   </div>
   <template v-if="currentSetup">
     <div v-for="(stationData, index) in filledStations" :class="'row pb-3 ' + (index === 0 ? 'hide-overflow' : '')">

@@ -67,6 +67,7 @@ export default {
 
           plate.setData('piece', result.data);
           this.project.solved = false;
+          this.project.pieces.push(result.data);
         } catch (error) {
           plate.setData('piece', null);
         }
