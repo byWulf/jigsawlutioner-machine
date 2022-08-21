@@ -104,6 +104,17 @@ class ProjectCrudController extends AbstractCrudController
         return new JsonResponse($this->serializer->serialize($project, 'json', ['groups' => 'project']), json: true);
     }
 
+    #[Route('projects/{id}/solution-status')]
+    public function getSolvingStatus(Project $project): JsonResponse
+    {
+        return new JsonResponse([
+            'solved' => $project->isSolved(),
+            'solvingStatus' => $project->getSolvingStatus(),
+            'solvedGroups' => $project->getSolvedGroups(),
+            'biggestGroup' => $project->getBiggestGroup(),
+        ]);
+    }
+
     #[Route('/projects/{id}/pieces/{pieceIndex}/analyze')]
     public function analyzePiece(Project $project, int $pieceIndex, Request $request): JsonResponse
     {

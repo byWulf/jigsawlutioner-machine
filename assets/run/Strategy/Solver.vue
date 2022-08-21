@@ -109,15 +109,20 @@ export default {
 
     async checkForSolved() {
       try {
-        const result = await this.axios.get('/projects/' + this.project.id);
+        const result = await this.axios.get('/projects/' + this.project.id + '/solution-status');
 
-        const project = result.data;
-        this.$root.setProject(project);
-        this.$forceUpdate();
+        this.project.solved = result.data.solved;
+        this.project.solvingStatus = result.data.solvingStatus;
+        this.project.solvedGroups = result.data.solvedGroups;
+        this.project.biggestGroup = result.data.biggestGroup;
 
         if (project.solved) {
           clearInterval(this.interval);
           this.interval = null;
+
+          const result = await this.axios.get('/projects/' + this.project.id);
+          this.$root.setProject(result.data);
+          this.$forceUpdate();
 
           this.solving = false;
 

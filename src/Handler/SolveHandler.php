@@ -8,6 +8,7 @@ use App\Dto\SolveMessage;
 use App\Entity\Piece;
 use App\Repository\ProjectRepository;
 use Bywulf\Jigsawlutioner\Dto\Piece as PieceDto;
+use Bywulf\Jigsawlutioner\Dto\ReducedPiece;
 use Bywulf\Jigsawlutioner\Service\MatchingMapGenerator;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\PuzzleSolverInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -51,6 +52,8 @@ class SolveHandler
 
         $matchingMap = $this->matchingMapGenerator->getMatchingMap($pieces);
 
+        $reducedPieces = array_map(fn (PieceDto $piece): ReducedPiece => ReducedPiece::fromPiece($piece), $pieces);
+
         $lastSave = microtime(true);
         $this->puzzleSolver->setStepProgressionCallback(function (string $message, int $groups, int $biggestGroup) use ($project, &$lastSave): void {
             $project->setBiggestGroup($biggestGroup);
@@ -63,7 +66,7 @@ class SolveHandler
             }
         });
 
-        $solution = $this->puzzleSolver->findSolution($pieces, $matchingMap);
+        $solution = $this->puzzleSolver->findSolution($reducedPieces, $matchingMap);
 
         foreach ($solution->getGroups() as $group) {
             foreach ($group->getPlacements() as $placement) {
