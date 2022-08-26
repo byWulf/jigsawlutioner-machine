@@ -10,6 +10,7 @@ export default {
   data() {
     return {
       movements: 0,
+      resetted: false,
     };
   },
   inject: [
@@ -18,9 +19,14 @@ export default {
   methods: {
     async reset() {
       await this.axios.get('/controllers/' + this.controller.id + '/call/reset');
+      this.resetted = true;
     },
     handlePlate(plate) {
       return new Promise(async (resolve) => {
+        if (!this.resetted) {
+          await this.reset();
+        }
+
         const data = await plate.getData();
 
         if (!data.piece || !data.board) {

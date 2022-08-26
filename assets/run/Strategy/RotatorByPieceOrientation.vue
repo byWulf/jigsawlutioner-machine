@@ -7,14 +7,24 @@ import { getAverageRotation, rotatePoint } from '../Service/PointService';
 
 export default {
   props: ['controller', 'project'],
+  data() {
+    return {
+      resetted: false,
+    };
+  },
   inject: [
     'axios',
   ],
   methods: {
     async reset() {
       await this.axios.get('/controllers/' + this.controller.id + '/call/reset');
+      this.resetted = true;
     },
     async handlePlate(plate) {
+      if (!this.resetted) {
+        await this.reset();
+      }
+
       const data = await plate.getData();
 
       if (!data.piece) {

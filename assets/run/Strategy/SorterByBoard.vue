@@ -29,6 +29,7 @@ export default {
       boxCount: null,
       boardToBoxMapping: [],
       movements: 0,
+      resetted: false,
     };
   },
   inject: [
@@ -49,6 +50,7 @@ export default {
   methods: {
     async reset() {
       await this.axios.get('/controllers/' + this.controller.id + '/call/reset');
+      this.resetted = true;
     },
     toggleBoardToBox(boxIndex, boardIndex) {
       for (let i = 0; i < this.boardToBoxMapping.length; i++) {
@@ -64,6 +66,10 @@ export default {
       this.boardToBoxMapping[boxIndex].push(boardIndex);
     },
     async handlePlate(plate) {
+      if (!this.resetted) {
+        await this.reset();
+      }
+
       const data = await plate.getData();
 
       if (!data.piece || !data.board) {

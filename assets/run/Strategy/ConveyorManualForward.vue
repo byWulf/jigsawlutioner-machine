@@ -9,6 +9,7 @@ export default {
   data() {
     return {
       running: false,
+      resetted: false,
     };
   },
   inject: [
@@ -17,6 +18,7 @@ export default {
   methods: {
     async resetConveyor() {
       await this.axios.get('/controllers/' + this.controller.id + '/call/reset');
+      this.resetted = true;
     },
 
     async forward() {
@@ -25,6 +27,10 @@ export default {
       }
 
       this.running = true;
+
+      if (!this.resetted) {
+        await this.resetConveyor();
+      }
 
       this.$root.movePlates(500);
       await this.axios.get('/controllers/' + this.controller.id + '/call/move-to-next-plate');
