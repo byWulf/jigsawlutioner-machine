@@ -49,6 +49,7 @@ export default {
       plateIndex: 0,
       plates: [],
       movePlatesDuration: null,
+      lastMovement: null,
     }
   },
   mounted() {
@@ -115,6 +116,12 @@ export default {
       }
 
       this.movePlatesDuration = time;
+
+      if (this.lastMovement !== null) {
+          console.log('Processing time: ' + (Date.now() - this.lastMovement) + 'ms');
+      }
+
+      this.lastMovement = Date.now();
     },
 
     async handleStations() {
