@@ -98,12 +98,11 @@ class ControllerCrudController extends AbstractCrudController
         }
     }
 
-    #[Route('/controllers/{id}/take-photo/{lightPosition}/{lightPositionAfter}/{filename}', requirements: ['filename' => '^[^.]+$'])]
-    public function takeImage(Controller $controller, string $lightPosition, string $lightPositionAfter, string $filename): JsonResponse
+    #[Route('/controllers/{id}/fetch-photo/{photo}/{filename}', requirements: ['filename' => '^[^.]+$'])]
+    public function takeImage(Controller $controller, string $photo, string $filename): JsonResponse
     {
-        $response = $this->controllerService->callController($controller, '/take-photo', [
-            'light[position]' => $lightPosition,
-            'light[positionAfter]' => $lightPositionAfter
+        $response = $this->controllerService->callController($controller, '/fetch-photo', [
+            'photo' => $photo,
         ]);
 
         $this->filesystem->dumpFile(

@@ -29,6 +29,11 @@ export default {
     'axios',
   ],
   methods: {
+    sleep(ms) {
+      return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
+    },
     handlePlate(plate) {
       return new Promise(async (resolve) => {
         const pieceIndex = this.currentPieceIndex;
@@ -41,10 +46,29 @@ export default {
 
         try {
           if (this.colorImages) {
-            const resultTop = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/top/bottom/' + topFilename);
+            const resultTop = await this.axios.get('/controllers/' + this.controller.id + '/call/request-photo', {
+              params: { 'light[position]': 'top'}
+            });
+
+            await this.axios.get('/controllers/' + this.controller.id + '/fetch-photo/' + resultTop.data + '/' + topFilename);
           }
 
-          const resultBottom = await this.axios.get('/controllers/' + this.controller.id + '/take-photo/bottom/' + (this.colorImages ? 'top' : 'bottom') + '/' + bottomFilename);
+          const resultBottom = await this.axios.get('/controllers/' + this.controller.id + '/call/request-photo', {
+            params: { 'light[position]': 'bottom'}
+          });
+
+          // Resolve as early as possible
+          resolve();
+
+          try {
+            await this.axios.get('/controllers/' + this.controller.id + '/fetch-photo/' + resultBottom.data + '/' + bottomFilename);
+          } catch (error) {
+            plate.setData('piece', null);
+            plate.setReady();
+
+            return;
+          }
+
         } catch (error) {
           plate.setData('piece', null);
           plate.setReady();
@@ -52,8 +76,6 @@ export default {
 
           return;
         }
-
-        resolve();
 
         plate.setNotReady('Analyzing piece...');
 

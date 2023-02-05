@@ -11,6 +11,11 @@ export default {
     'axios',
   ],
   methods: {
+    sleep(ms) {
+      return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+      });
+    },
     handlePlate(plate) {
       return new Promise(async (resolve) => {
         const pieceIndex = this.currentPieceIndex;
@@ -27,7 +32,22 @@ export default {
         const filename = this.project.id + '/piece_lookup' + pieceIndex;
 
         try {
-          await this.axios.get('/controllers/' + this.controller.id + '/take-photo/bottom/bottom/' + filename);
+          const resultBottom = await this.axios.get('/controllers/' + this.controller.id + '/call/request-photo', {
+            params: { 'light[position]': 'bottom'}
+          });
+
+          // Resolve as early as possible
+          resolve();
+
+          try {
+            await this.axios.get('/controllers/' + this.controller.id + '/fetch-photo/' + resultBottom.data + '/' + filename);
+          } catch (error) {
+            plate.setData('piece', null);
+            plate.setReady();
+
+            return;
+          }
+
         } catch (error) {
           plate.setData('piece', null);
           plate.setReady();
@@ -35,8 +55,6 @@ export default {
 
           return;
         }
-
-        resolve();
 
         plate.setNotReady('Analyzing piece...');
 
